@@ -29,6 +29,16 @@ class AppRouter {
     return GoRouter(
       navigatorKey: _rootNavigatorKey,
       initialLocation: '/splash',
+      onException: (context, state, router) {
+        // Handle custom deep link scheme: premierlaundry://payment-success?orderId=xxx
+        final uri = state.uri;
+        final orderId = uri.queryParameters['orderId'];
+        if (orderId != null && orderId.isNotEmpty) {
+          router.go('/customer/order/$orderId');
+        } else {
+          router.go('/customer/home');
+        }
+      },
       redirect: (BuildContext ctx, GoRouterState state) {
         final session = Supabase.instance.client.auth.currentSession;
         final isAuthenticated = session != null;
@@ -102,22 +112,6 @@ class AppRouter {
         GoRoute(
           path: '/customer/vouchers',
           builder: (context, state) => const VoucherListPage(),
-        ),
-        GoRoute(
-          path: '/payment-success',
-          redirect: (context, state) {
-            final orderId = state.uri.queryParameters['orderId'];
-            if (orderId != null) return '/customer/order/$orderId';
-            return '/customer/home';
-          },
-        ),
-        GoRoute(
-          path: '/payment-failed',
-          redirect: (context, state) {
-            final orderId = state.uri.queryParameters['orderId'];
-            if (orderId != null) return '/customer/order/$orderId';
-            return '/customer/home';
-          },
         ),
         GoRoute(
           path: '/customer/profile',
