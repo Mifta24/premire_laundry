@@ -24,8 +24,15 @@ class _AdminHomePageState extends State<AdminHomePage> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadAll());
   }
 
+  @override
+  void dispose() {
+    context.read<AdminProvider>().unsubscribeFromRealtime();
+    super.dispose();
+  }
+
   Future<void> _loadAll() async {
     final provider = context.read<AdminProvider>();
+    provider.subscribeToRealtime();
     await Future.wait([
       provider.loadAllOrders(),
       provider.loadPendingPayments(),

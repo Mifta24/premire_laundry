@@ -50,6 +50,20 @@ create policy "profiles: admin can update all"
   on profiles for update
   using (get_my_role() = 'admin');
 
+-- Kurir boleh baca profil customer dari order yang ditugaskan kepadanya
+create policy "profiles: courier can read assigned customers"
+  on profiles for select
+  using (
+    get_my_role() = 'courier'
+    and exists (
+      select 1
+      from orders
+      join courier_tasks on courier_tasks.order_id = orders.id
+      where orders.customer_id = profiles.user_id
+        and courier_tasks.courier_id = auth.uid()
+    )
+  );
+
 -- Insert hanya via trigger/service role (profile dibuat otomatis saat register)
 -- Jika perlu insert manual dari client:
 create policy "profiles: user can insert own"
@@ -88,6 +102,20 @@ create policy "addresses: user can delete own"
 create policy "addresses: admin can read all"
   on addresses for select
   using (get_my_role() = 'admin');
+
+-- Kurir boleh baca alamat order yang ditugaskan kepadanya
+create policy "addresses: courier can read assigned order addresses"
+  on addresses for select
+  using (
+    get_my_role() = 'courier'
+    and exists (
+      select 1
+      from orders
+      join courier_tasks on courier_tasks.order_id = orders.id
+      where orders.address_id = addresses.id
+        and courier_tasks.courier_id = auth.uid()
+    )
+  );
 ```
 
 ---
@@ -149,6 +177,26 @@ create policy "orders: customer can update own"
 create policy "orders: courier can read assigned"
   on orders for select
   using (
+    get_my_role() = 'courier'
+    and exists (
+      select 1 from courier_tasks
+      where courier_tasks.order_id = orders.id
+        and courier_tasks.courier_id = auth.uid()
+    )
+  );
+
+-- Kurir boleh update order yang memiliki courier_task miliknya
+create policy "orders: courier can update assigned"
+  on orders for update
+  using (
+    get_my_role() = 'courier'
+    and exists (
+      select 1 from courier_tasks
+      where courier_tasks.order_id = orders.id
+        and courier_tasks.courier_id = auth.uid()
+    )
+  )
+  with check (
     get_my_role() = 'courier'
     and exists (
       select 1 from courier_tasks

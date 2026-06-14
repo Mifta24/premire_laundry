@@ -27,6 +27,7 @@ class _CourierHomePageState extends State<CourierHomePage>
 
   @override
   void dispose() {
+    context.read<CourierProvider>().unsubscribeFromRealtime();
     _tabController.dispose();
     super.dispose();
   }
@@ -34,7 +35,9 @@ class _CourierHomePageState extends State<CourierHomePage>
   Future<void> _loadTasks() async {
     final userId = context.read<AuthProvider>().currentUser?.id;
     if (userId != null) {
-      await context.read<CourierProvider>().loadTasks(userId);
+      final provider = context.read<CourierProvider>();
+      provider.subscribeToRealtime(userId);
+      await provider.loadTasks(userId);
     }
   }
 

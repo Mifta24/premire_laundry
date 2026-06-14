@@ -18,6 +18,7 @@ class AdminProvider extends ChangeNotifier {
   List<DeliveryFeeModel> _deliveryFees = [];
   bool _isLoading = false;
   String? _error;
+  RealtimeChannel? _channel;
 
   List<OrderModel> get allOrders => _allOrders;
   List<PaymentModel> get pendingPayments => _pendingPayments;
@@ -143,13 +144,6 @@ class AdminProvider extends ChangeNotifier {
           .from('orders')
           .update({'status': status}).eq('id', orderId);
 
-      await _supabase.from('order_status_histories').insert({
-        'order_id': orderId,
-        'status': status,
-        'changed_by': _supabase.auth.currentUser?.id,
-        'note': note ?? '',
-      });
-
       await loadAllOrders();
       return true;
     } catch (e) {
@@ -210,13 +204,6 @@ class AdminProvider extends ChangeNotifier {
           'payment_status': 'paid',
           'status': 'paid',
         }).eq('id', orderId);
-
-        await _supabase.from('order_status_histories').insert({
-          'order_id': orderId,
-          'status': 'paid',
-          'changed_by': _supabase.auth.currentUser?.id,
-          'note': 'Pembayaran dikonfirmasi oleh admin',
-        });
       } else {
         await _supabase.from('orders').update({
           'payment_status': 'rejected',
@@ -296,13 +283,6 @@ class AdminProvider extends ChangeNotifier {
         'status': 'waiting_payment',
         'payment_status': 'pending',
       }).eq('id', orderId);
-
-      await _supabase.from('order_status_histories').insert({
-        'order_id': orderId,
-        'status': 'waiting_payment',
-        'changed_by': _supabase.auth.currentUser?.id,
-        'note': 'Berat input: ${weightKg}kg, Total: $total',
-      });
 
       await loadAllOrders();
       return true;
@@ -461,5 +441,35 @@ class AdminProvider extends ChangeNotifier {
     } catch (e) {
       return null;
     }
+  }
+
+  void subscribeToRealtime() {
+    if (_channel != null) return;
+    _channel = _supabase
+        .channel('admin_realtime')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'orders',
+          callback: (_) => loadAllOrders(),
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'payments',
+          callback: (_) => loadPendingPayments(),
+        )
+        .subscribe();
+  }
+
+  void unsubscribeFromRealtime() {
+    _channel?.unsubscribe();
+    _channel = null;
+  }
+
+  @override
+  void dispose() {
+    _channel?.unsubscribe();
+    super.dispose();
   }
 }

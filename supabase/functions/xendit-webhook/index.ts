@@ -45,21 +45,13 @@ serve(async (req: Request) => {
         })
         .eq("id", orderId);
 
-      // Catat status history
+      // Kirim notifikasi ke customer
       const { data: order } = await supabase
         .from("orders")
         .select("customer_id")
         .eq("id", orderId)
         .single();
 
-      await supabase.from("order_status_histories").insert({
-        order_id: orderId,
-        status: "paid",
-        changed_by: order?.customer_id,
-        note: "Pembayaran dikonfirmasi via Xendit",
-      });
-
-      // Kirim notifikasi ke customer
       if (order?.customer_id) {
         await fetch(
           `${Deno.env.get("SUPABASE_URL")}/functions/v1/send-notification`,

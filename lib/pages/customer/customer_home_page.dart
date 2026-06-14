@@ -25,10 +25,18 @@ class _CustomerHomePageState extends State<CustomerHomePage> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadData());
   }
 
+  @override
+  void dispose() {
+    context.read<CustomerProvider>().unsubscribeFromRealtime();
+    super.dispose();
+  }
+
   Future<void> _loadData() async {
     final userId = context.read<AuthProvider>().currentUser?.id;
     if (userId != null) {
-      await context.read<CustomerProvider>().loadOrders(userId);
+      final provider = context.read<CustomerProvider>();
+      provider.subscribeToRealtime(userId);
+      await provider.loadOrders(userId);
     }
   }
 

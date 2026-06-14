@@ -40,12 +40,6 @@ serve(async (req: Request) => {
       .update({ status: "completed" })
       .eq("id", orderId);
 
-    await supabase.from("order_status_histories").insert({
-      order_id: orderId,
-      status: "completed",
-      note: "Order selesai diterima customer",
-    });
-
     // Proses loyalty points
     const customerId = order.customer_id;
 

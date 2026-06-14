@@ -4,11 +4,15 @@ import '../models/courier_task_model.dart';
 
 class CourierProvider extends ChangeNotifier {
   final _supabase = Supabase.instance.client;
+  static const _taskSelect =
+      '*, orders(order_code, notes, customer_id, address_id, addresses(address_text, latitude, longitude))';
 
   List<CourierTaskModel> _pickupTasks = [];
   List<CourierTaskModel> _deliveryTasks = [];
   bool _isLoading = false;
   String? _error;
+  RealtimeChannel? _channel;
+  String? _subscribedCourierId;
 
   List<CourierTaskModel> get pickupTasks => _pickupTasks;
   List<CourierTaskModel> get deliveryTasks => _deliveryTasks;
@@ -31,15 +35,12 @@ class CourierProvider extends ChangeNotifier {
     try {
       final data = await _supabase
           .from('courier_tasks')
-          .select(
-              '*, orders(order_code, notes, profiles(name), addresses(address_text, latitude, longitude))')
+          .select(_taskSelect)
           .eq('courier_id', courierId)
           .not('status', 'in', '(completed,cancelled)')
           .order('assigned_at', ascending: false);
 
-      final tasks = (data as List<dynamic>)
-          .map((t) => CourierTaskModel.fromJson(t as Map<String, dynamic>))
-          .toList();
+      final tasks = await _buildTasksWithCustomerNames(data as List<dynamic>);
 
       _pickupTasks = tasks.where((t) => t.taskType == 'pickup').toList();
       _deliveryTasks = tasks.where((t) => t.taskType == 'delivery').toList();
@@ -51,8 +52,73 @@ class CourierProvider extends ChangeNotifier {
     }
   }
 
+  Future<List<CourierTaskModel>> _buildTasksWithCustomerNames(
+    List<dynamic> data,
+  ) async {
+    // Collect unique customer IDs from orders
+    final customerIds = data
+        .map((t) => (t['orders'] as Map<String, dynamic>?)?['customer_id'])
+        .whereType<String>()
+        .toSet()
+        .toList();
+
+    // Fetch profiles for those customer IDs
+    final Map<String, String> customerNames = {};
+    if (customerIds.isNotEmpty) {
+      final profiles = await _supabase
+          .from('profiles')
+          .select('user_id, name')
+          .inFilter('user_id', customerIds);
+      for (final p in profiles as List<dynamic>) {
+        final uid = p['user_id'] as String?;
+        final name = p['name'] as String?;
+        if (uid != null && name != null) customerNames[uid] = name;
+      }
+    }
+
+    // Inject profile names into the order map before parsing
+    return data.map((t) {
+      final raw = Map<String, dynamic>.from(t as Map<String, dynamic>);
+      final order = raw['orders'] as Map<String, dynamic>?;
+      if (order != null) {
+        final customerId = order['customer_id'] as String?;
+        if (customerId != null && customerNames.containsKey(customerId)) {
+          final orderCopy = Map<String, dynamic>.from(order);
+          orderCopy['profiles'] = {'name': customerNames[customerId]};
+          raw['orders'] = orderCopy;
+        }
+      }
+      return CourierTaskModel.fromJson(raw);
+    }).toList();
+  }
+
+  void subscribeToRealtime(String courierId) {
+    if (_subscribedCourierId == courierId) return;
+    _channel?.unsubscribe();
+    _subscribedCourierId = courierId;
+    _channel = _supabase
+        .channel('courier_tasks_$courierId')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'courier_tasks',
+          callback: (_) => loadTasks(courierId),
+        )
+        .subscribe();
+  }
+
+  void unsubscribeFromRealtime() {
+    _channel?.unsubscribe();
+    _channel = null;
+    _subscribedCourierId = null;
+  }
+
   Future<bool> updateTaskStatus(
-      String taskId, String status, String taskType, String orderId) async {
+    String taskId,
+    String status,
+    String taskType,
+    String orderId,
+  ) async {
     _setLoading(true);
     _setError(null);
     try {
@@ -61,10 +127,7 @@ class CourierProvider extends ChangeNotifier {
         updateData['completed_at'] = DateTime.now().toIso8601String();
       }
 
-      await _supabase
-          .from('courier_tasks')
-          .update(updateData)
-          .eq('id', taskId);
+      await _supabase.from('courier_tasks').update(updateData).eq('id', taskId);
 
       // Map task status to order status
       String? orderStatus;
@@ -85,14 +148,8 @@ class CourierProvider extends ChangeNotifier {
       if (orderStatus != null) {
         await _supabase
             .from('orders')
-            .update({'status': orderStatus}).eq('id', orderId);
-
-        await _supabase.from('order_status_histories').insert({
-          'order_id': orderId,
-          'status': orderStatus,
-          'changed_by': _supabase.auth.currentUser?.id,
-          'note': 'Diperbarui oleh kurir',
-        });
+            .update({'status': orderStatus})
+            .eq('id', orderId);
       }
 
       return true;
@@ -108,14 +165,21 @@ class CourierProvider extends ChangeNotifier {
     try {
       final data = await _supabase
           .from('courier_tasks')
-          .select(
-              '*, orders(order_code, notes, profiles(name), addresses(address_text, latitude, longitude))')
+          .select(_taskSelect)
           .eq('id', taskId)
           .single();
-      return CourierTaskModel.fromJson(data);
+
+      final tasks = await _buildTasksWithCustomerNames([data]);
+      return tasks.isNotEmpty ? tasks.first : null;
     } catch (e) {
       _setError(e.toString());
       return null;
     }
+  }
+
+  @override
+  void dispose() {
+    _channel?.unsubscribe();
+    super.dispose();
   }
 }

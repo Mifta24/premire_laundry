@@ -17,6 +17,8 @@ class CustomerProvider extends ChangeNotifier {
   LoyaltyModel? _loyaltyPoints;
   bool _isLoading = false;
   String? _error;
+  RealtimeChannel? _channel;
+  String? _subscribedUserId;
 
   List<OrderModel> get orders => _orders;
   List<AddressModel> get addresses => _addresses;
@@ -348,5 +350,37 @@ class CustomerProvider extends ChangeNotifier {
       _setError(e.toString());
       return null;
     }
+  }
+
+  void subscribeToRealtime(String userId) {
+    if (_subscribedUserId == userId) return;
+    _channel?.unsubscribe();
+    _subscribedUserId = userId;
+    _channel = _supabase
+        .channel('customer_orders_$userId')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'orders',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'customer_id',
+            value: userId,
+          ),
+          callback: (_) => loadOrders(userId),
+        )
+        .subscribe();
+  }
+
+  void unsubscribeFromRealtime() {
+    _channel?.unsubscribe();
+    _channel = null;
+    _subscribedUserId = null;
+  }
+
+  @override
+  void dispose() {
+    _channel?.unsubscribe();
+    super.dispose();
   }
 }

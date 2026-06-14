@@ -28,7 +28,7 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> initialize() async {
-    _setLoading(true);
+    _isLoading = true; // silent — no notifyListeners until state is ready
     try {
       final session = _supabase.auth.currentSession;
       if (session != null) {
@@ -36,9 +36,10 @@ class AuthProvider extends ChangeNotifier {
         await loadProfile();
       }
     } catch (e) {
-      _setError(e.toString());
+      _error = e.toString();
     } finally {
-      _setLoading(false);
+      _isLoading = false;
+      notifyListeners();
     }
   }
 

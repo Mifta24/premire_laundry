@@ -20,7 +20,6 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
 
   final _latController = TextEditingController();
   final _lngController = TextEditingController();
-  final _xenditTokenController = TextEditingController();
 
   LatLng _storeLocation = const LatLng(-6.2088, 106.8456);
   String _qrisImageUrl = '';
@@ -37,7 +36,6 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
   void dispose() {
     _latController.dispose();
     _lngController.dispose();
-    _xenditTokenController.dispose();
     super.dispose();
   }
 
@@ -58,7 +56,6 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
         _latController.text = lat.toString();
         _lngController.text = lng.toString();
         _qrisImageUrl = map['qris_image_url'] ?? '';
-        _xenditTokenController.text = map['xendit_callback_token'] ?? '';
       });
     } catch (e) {
       _showSnack('Gagal memuat settings: $e', isError: true);
@@ -122,23 +119,6 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
       _showSnack('Gagal upload QRIS: $e', isError: true);
     } finally {
       setState(() => _isUploading = false);
-    }
-  }
-
-  Future<void> _saveXenditToken() async {
-    final token = _xenditTokenController.text.trim();
-    if (token.isEmpty) {
-      _showSnack('Token tidak boleh kosong', isError: true);
-      return;
-    }
-    setState(() => _isLoading = true);
-    try {
-      await _saveSetting('xendit_callback_token', token);
-      _showSnack('Xendit token berhasil disimpan');
-    } catch (e) {
-      _showSnack('Gagal simpan token: $e', isError: true);
-    } finally {
-      setState(() => _isLoading = false);
     }
   }
 
@@ -333,35 +313,6 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
                           label: _isUploading ? 'Mengupload...' : 'Upload Gambar QRIS',
                           isLoading: _isUploading,
                           color: AppColors.secondary,
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  _buildSection(
-                    title: 'Xendit Webhook Token',
-                    icon: Icons.webhook,
-                    child: Column(
-                      children: [
-                        TextField(
-                          controller: _xenditTokenController,
-                          decoration: InputDecoration(
-                            labelText: 'Webhook Verification Token',
-                            hintText: 'Paste token dari Xendit Dashboard',
-                            border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(10)),
-                            filled: true,
-                            fillColor: Colors.white,
-                          ),
-                          maxLines: 2,
-                        ),
-                        const SizedBox(height: 12),
-                        AppButton(
-                          onPressed: _saveXenditToken,
-                          label: 'Simpan Token',
-                          isLoading: _isLoading,
                         ),
                       ],
                     ),
