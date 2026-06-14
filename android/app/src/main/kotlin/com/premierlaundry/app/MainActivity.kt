@@ -1,4 +1,4 @@
-package com.example.premire_laundry
+package com.premierlaundry.app
 
 import io.flutter.embedding.android.FlutterActivity
 

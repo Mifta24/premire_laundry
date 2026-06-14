@@ -1,3 +1,6 @@
+# Local secrets
+lib/core/constants/supabase_keys.dart
+
 # Miscellaneous
 *.class
 *.log
