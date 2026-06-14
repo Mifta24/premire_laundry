@@ -153,10 +153,10 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
     );
     double fee = 0;
     for (final f in _deliveryFees) {
-      final min = (f['min_distance_km'] as num).toDouble();
-      final max = (f['max_distance_km'] as num).toDouble();
+      final min = (f['min_distance_km'] as num?)?.toDouble() ?? 0;
+      final max = (f['max_distance_km'] as num?)?.toDouble() ?? double.infinity;
       if (dist >= min && dist <= max) {
-        fee = (f['fee'] as num).toDouble();
+        fee = (f['fee'] as num?)?.toDouble() ?? 0;
         break;
       }
     }

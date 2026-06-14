@@ -104,6 +104,22 @@ class AppRouter {
           builder: (context, state) => const VoucherListPage(),
         ),
         GoRoute(
+          path: '/payment-success',
+          redirect: (context, state) {
+            final orderId = state.uri.queryParameters['orderId'];
+            if (orderId != null) return '/customer/order/$orderId';
+            return '/customer/home';
+          },
+        ),
+        GoRoute(
+          path: '/payment-failed',
+          redirect: (context, state) {
+            final orderId = state.uri.queryParameters['orderId'];
+            if (orderId != null) return '/customer/order/$orderId';
+            return '/customer/home';
+          },
+        ),
+        GoRoute(
           path: '/customer/profile',
           builder: (context, state) => const CustomerProfilePage(),
         ),

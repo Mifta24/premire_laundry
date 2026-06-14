@@ -132,6 +132,10 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  @override
+  String toString() =>
+      'AuthProvider(isAuthenticated: $isAuthenticated, role: ${_profile?.role}, isLoading: $_isLoading, error: $_error)';
+
   Future<bool> updateProfile(String name, String phone) async {
     _setLoading(true);
     _setError(null);

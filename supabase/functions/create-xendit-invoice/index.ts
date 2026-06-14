@@ -36,8 +36,8 @@ serve(async (req: Request) => {
         description: `Pembayaran Order Premier Laundry #${orderId}`,
         customer: { given_names: customerName, email: customerEmail },
         currency: "IDR",
-        success_redirect_url: `${Deno.env.get("APP_SCHEME") ?? "premierlaundry"}://payment-success`,
-        failure_redirect_url: `${Deno.env.get("APP_SCHEME") ?? "premierlaundry"}://payment-failed`,
+        success_redirect_url: `${Deno.env.get("APP_SCHEME") ?? "premierlaundry"}://payment-success?orderId=${orderId}`,
+        failure_redirect_url: `${Deno.env.get("APP_SCHEME") ?? "premierlaundry"}://payment-failed?orderId=${orderId}`,
       }),
     });
 

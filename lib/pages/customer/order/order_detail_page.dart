@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -21,11 +22,58 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
   OrderModel? _order;
   List<Map<String, dynamic>> _statusHistory = [];
   bool _isLoading = true;
+  RealtimeChannel? _channel;
 
   @override
   void initState() {
     super.initState();
     _loadOrder();
+    _subscribeRealtime();
+  }
+
+  @override
+  void dispose() {
+    _channel?.unsubscribe();
+    super.dispose();
+  }
+
+  void _subscribeRealtime() {
+    _channel = Supabase.instance.client
+        .channel('order-${widget.orderId}')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.update,
+          schema: 'public',
+          table: 'orders',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'id',
+            value: widget.orderId,
+          ),
+          callback: (_) => _loadOrder(),
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.insert,
+          schema: 'public',
+          table: 'order_status_histories',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'order_id',
+            value: widget.orderId,
+          ),
+          callback: (_) => _loadOrder(),
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.update,
+          schema: 'public',
+          table: 'payments',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'order_id',
+            value: widget.orderId,
+          ),
+          callback: (_) => _loadOrder(),
+        )
+        .subscribe();
   }
 
   Future<void> _loadOrder() async {
@@ -115,7 +163,8 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
 
     final order = _order!;
     final canPay = order.paymentStatus == 'pending' &&
-        order.status == 'waiting_payment';
+        (order.status == 'waiting_payment' ||
+            (order.status == 'created' && order.orderType == 'satuan'));
     final canCancel = order.status == 'created';
 
     return Scaffold(

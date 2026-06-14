@@ -77,19 +77,23 @@ class _PaymentPageState extends State<PaymentPage> {
   Future<void> _payWithXendit() async {
     setState(() => _isLoading = true);
     try {
+      final auth = context.read<AuthProvider>();
       final response = await Supabase.instance.client.functions.invoke(
         'create-xendit-invoice',
         body: {
-          'order_id': widget.orderId,
+          'orderId': widget.orderId,
           'amount': _order?.totalAmount ?? 0,
+          'customerName': auth.profile?.name ?? 'Customer',
+          'customerEmail': auth.currentUser?.email ?? '',
         },
       );
 
-      final paymentUrl = response.data?['invoice_url'] as String?;
+      final paymentUrl = response.data?['invoiceUrl'] as String?;
       if (paymentUrl != null) {
         final uri = Uri.parse(paymentUrl);
-        if (await canLaunchUrl(uri)) {
-          await launchUrl(uri, mode: LaunchMode.externalApplication);
+        final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+        if (!launched) {
+          await launchUrl(uri, mode: LaunchMode.inAppWebView);
         }
       }
     } catch (e) {
