@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "596606544320",
+    "project_id": "premier-laundry-dcef2",
+    "storage_bucket": "premier-laundry-dcef2.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:596606544320:android:1844f8c184f412d831c025",
+        "android_client_info": {
+          "package_name": "com.premierlaundry.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBnkpgB221tHZJt_cfJ-WN9Bwb6BLBSs8o"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

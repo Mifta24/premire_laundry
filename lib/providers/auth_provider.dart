@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../core/services/notification_service.dart';
 import '../models/profile_model.dart';
 
 class AuthProvider extends ChangeNotifier {
@@ -52,6 +53,7 @@ class AuthProvider extends ChangeNotifier {
       _currentUser = response.user;
       if (_currentUser != null) {
         await loadProfile();
+        await NotificationService().saveTokenToSupabase(_currentUser!.id);
         return true;
       }
       return false;
@@ -83,6 +85,7 @@ class AuthProvider extends ChangeNotifier {
       _currentUser = response.user;
       if (_currentUser != null) {
         await loadProfile();
+        await NotificationService().saveTokenToSupabase(_currentUser!.id);
         return true;
       }
       return false;
@@ -100,6 +103,9 @@ class AuthProvider extends ChangeNotifier {
   Future<void> signOut() async {
     _setLoading(true);
     try {
+      if (_currentUser != null) {
+        await NotificationService().deactivateToken(_currentUser!.id);
+      }
       await _supabase.auth.signOut();
       _currentUser = null;
       _profile = null;

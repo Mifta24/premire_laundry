@@ -6,6 +6,7 @@ import '../../providers/admin_provider.dart';
 import '../../providers/auth_provider.dart';
 import 'order/admin_order_list_page.dart';
 import 'payment/admin_payment_list_page.dart';
+import 'settings/admin_settings_page.dart';
 
 class AdminHomePage extends StatefulWidget {
   const AdminHomePage({super.key});
@@ -45,6 +46,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
     'Pembayaran',
     'Layanan',
     'Ongkir',
+    'Pengaturan',
   ];
 
   @override
@@ -57,6 +59,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
       const AdminPaymentListPage(),
       const _AdminServicesTab(),
       const _AdminDeliveryFeesTab(),
+      const AdminSettingsPage(),
     ];
 
     return Scaffold(
@@ -125,6 +128,11 @@ class _AdminHomePageState extends State<AdminHomePage> {
             icon: Icon(Icons.delivery_dining_outlined),
             activeIcon: Icon(Icons.delivery_dining),
             label: 'Ongkir',
+          ),
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.settings_outlined),
+            activeIcon: Icon(Icons.settings),
+            label: 'Pengaturan',
           ),
         ],
       ),

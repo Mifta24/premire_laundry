@@ -5,21 +5,15 @@ import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'core/constants/app_colors.dart';
+import 'core/services/notification_service.dart';
 import 'firebase_options.dart';
 import 'providers/admin_provider.dart';
 import 'providers/auth_provider.dart';
 import 'providers/courier_provider.dart';
 import 'providers/customer_provider.dart';
 import 'router/app_router.dart';
+import 'core/constants/supabase_keys.dart';
 
-const _supabaseUrl = String.fromEnvironment(
-  'SUPABASE_URL',
-  defaultValue: 'YOUR_SUPABASE_URL',
-);
-const _supabaseAnonKey = String.fromEnvironment(
-  'SUPABASE_ANON_KEY',
-  defaultValue: 'YOUR_SUPABASE_ANON_KEY',
-);
 
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   // Handle background messages
@@ -30,19 +24,19 @@ Future<void> main() async {
 
   // Initialize Supabase
   await Supabase.initialize(
-    url: _supabaseUrl,
-    publishableKey: _supabaseAnonKey,
+    url: SupabaseKeys.supabaseUrl,
+    publishableKey: SupabaseKeys.supabaseAnonKey,
   );
 
-  // Initialize Firebase
+  // Initialize Firebase + FCM
   try {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
-    FirebaseMessaging.onBackgroundMessage(
-        _firebaseMessagingBackgroundHandler);
-  } catch (_) {
-    // Firebase may not be configured yet; app still works without FCM
+    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+    await NotificationService().initialize();
+  } catch (e) {
+    debugPrint('Firebase init error: $e');
   }
 
   runApp(
