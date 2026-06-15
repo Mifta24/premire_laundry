@@ -24,6 +24,14 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
   bool _isLoading = true;
   RealtimeChannel? _channel;
 
+  String _displayOrderStatus(OrderModel order) {
+    if (order.status == 'waiting_payment' &&
+        order.paymentStatus == 'waiting_verification') {
+      return 'waiting_verification';
+    }
+    return order.status;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -93,7 +101,8 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
 
       setState(() {
         _order = OrderModel.fromJson(data);
-        _statusHistory = (history as List<dynamic>).cast<Map<String, dynamic>>();
+        _statusHistory = (history as List<dynamic>)
+            .cast<Map<String, dynamic>>();
         _isLoading = false;
       });
     } catch (e) {
@@ -114,8 +123,10 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child:
-                const Text('Ya, Batalkan', style: TextStyle(color: AppColors.error)),
+            child: const Text(
+              'Ya, Batalkan',
+              style: TextStyle(color: AppColors.error),
+            ),
           ),
         ],
       ),
@@ -123,8 +134,9 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
 
     if (confirm != true || !mounted) return;
 
-    final success =
-        await context.read<CustomerProvider>().cancelOrder(widget.orderId);
+    final success = await context.read<CustomerProvider>().cancelOrder(
+      widget.orderId,
+    );
     if (!mounted) return;
     if (success) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -162,7 +174,8 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
     }
 
     final order = _order!;
-    final canPay = order.paymentStatus == 'pending' &&
+    final canPay =
+        order.paymentStatus == 'pending' &&
         (order.status == 'waiting_payment' ||
             (order.status == 'created' && order.orderType == 'satuan'));
     final canCancel = order.status == 'created';
@@ -173,10 +186,7 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadOrder,
-          ),
+          IconButton(icon: const Icon(Icons.refresh), onPressed: _loadOrder),
         ],
       ),
       body: RefreshIndicator(
@@ -190,7 +200,8 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
               // Order info card
               Card(
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
+                  borderRadius: BorderRadius.circular(12),
+                ),
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: Column(
@@ -208,17 +219,22 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
                               ),
                             ),
                           ),
-                          StatusBadge(status: order.status),
+                          StatusBadge(status: _displayOrderStatus(order)),
                         ],
                       ),
                       const Divider(height: 24),
-                      _infoRow('Tipe', order.orderType == 'kiloan'
-                          ? 'Kiloan'
-                          : order.orderType == 'satuan'
-                              ? 'Satuan'
-                              : 'Campuran'),
-                      _infoRow('Tanggal',
-                          '${order.createdAt.day}/${order.createdAt.month}/${order.createdAt.year}'),
+                      _infoRow(
+                        'Tipe',
+                        order.orderType == 'kiloan'
+                            ? 'Kiloan'
+                            : order.orderType == 'satuan'
+                            ? 'Satuan'
+                            : 'Campuran',
+                      ),
+                      _infoRow(
+                        'Tanggal',
+                        '${order.createdAt.day}/${order.createdAt.month}/${order.createdAt.year}',
+                      ),
                       if (order.notes != null && order.notes!.isNotEmpty)
                         _infoRow('Catatan', order.notes!),
                     ],
@@ -229,23 +245,28 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
 
               // Items
               if (order.orderItems.isNotEmpty) ...[
-                const Text('Item Pesanan',
-                    style:
-                        TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                const Text(
+                  'Item Pesanan',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
                 const SizedBox(height: 8),
                 Card(
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                   child: Column(
                     children: order.orderItems.map((item) {
                       return ListTile(
                         title: Text(item.serviceName),
-                        subtitle: Text(item.serviceType == 'kiloan'
-                            ? '${item.weightKg ?? 0} kg'
-                            : '${item.quantity} pcs'),
-                        trailing: Text(formatRupiah(item.subtotal),
-                            style: const TextStyle(
-                                fontWeight: FontWeight.bold)),
+                        subtitle: Text(
+                          item.serviceType == 'kiloan'
+                              ? '${item.weightKg ?? 0} kg'
+                              : '${item.quantity} pcs',
+                        ),
+                        trailing: Text(
+                          formatRupiah(item.subtotal),
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
                       );
                     }).toList(),
                   ),
@@ -256,25 +277,34 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
               // Payment summary
               Card(
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
+                  borderRadius: BorderRadius.circular(12),
+                ),
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Ringkasan Pembayaran',
-                          style: TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.bold)),
+                      const Text(
+                        'Ringkasan Pembayaran',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                       const Divider(height: 20),
                       _summaryRow('Subtotal', formatRupiah(order.subtotal)),
-                      _summaryRow(
-                          'Ongkir', formatRupiah(order.deliveryFee)),
+                      _summaryRow('Ongkir', formatRupiah(order.deliveryFee)),
                       if (order.discountAmount > 0)
-                        _summaryRow('Diskon',
-                            '- ${formatRupiah(order.discountAmount)}'),
+                        _summaryRow(
+                          'Diskon',
+                          '- ${formatRupiah(order.discountAmount)}',
+                        ),
                       const Divider(),
-                      _summaryRow('Total', formatRupiah(order.totalAmount),
-                          bold: true),
+                      _summaryRow(
+                        'Total',
+                        formatRupiah(order.totalAmount),
+                        bold: true,
+                      ),
                       const SizedBox(height: 8),
                       Row(
                         children: [
@@ -290,22 +320,28 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
               // Status history
               if (_statusHistory.isNotEmpty) ...[
                 const SizedBox(height: 16),
-                const Text('Riwayat Status',
-                    style:
-                        TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                const Text(
+                  'Riwayat Status',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
                 const SizedBox(height: 8),
                 Card(
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                   child: Column(
                     children: _statusHistory.map((h) {
                       final dt = DateTime.parse(
-                          h['created_at'] as String? ?? '');
+                        h['created_at'] as String? ?? '',
+                      );
                       return ListTile(
-                        leading: const Icon(Icons.history,
-                            color: AppColors.primary),
+                        leading: const Icon(
+                          Icons.history,
+                          color: AppColors.primary,
+                        ),
                         title: StatusBadge(
-                            status: h['status'] as String? ?? ''),
+                          status: h['status'] as String? ?? '',
+                        ),
                         subtitle: Text(
                           h['note'] as String? ?? '',
                           style: const TextStyle(fontSize: 12),
@@ -355,13 +391,16 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
         children: [
           SizedBox(
             width: 100,
-            child: Text(label,
-                style: TextStyle(color: Colors.grey[600], fontSize: 13)),
+            child: Text(
+              label,
+              style: TextStyle(color: Colors.grey[600], fontSize: 13),
+            ),
           ),
           Expanded(
-            child: Text(value,
-                style: const TextStyle(
-                    fontWeight: FontWeight.w500, fontSize: 13)),
+            child: Text(
+              value,
+              style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
+            ),
           ),
         ],
       ),
@@ -374,15 +413,21 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label,
-              style: TextStyle(
-                  color: Colors.grey[700],
-                  fontWeight: bold ? FontWeight.bold : FontWeight.normal)),
-          Text(value,
-              style: TextStyle(
-                  fontWeight: bold ? FontWeight.bold : FontWeight.normal,
-                  fontSize: bold ? 16 : 14,
-                  color: bold ? AppColors.primary : null)),
+          Text(
+            label,
+            style: TextStyle(
+              color: Colors.grey[700],
+              fontWeight: bold ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
+          Text(
+            value,
+            style: TextStyle(
+              fontWeight: bold ? FontWeight.bold : FontWeight.normal,
+              fontSize: bold ? 16 : 14,
+              color: bold ? AppColors.primary : null,
+            ),
+          ),
         ],
       ),
     );

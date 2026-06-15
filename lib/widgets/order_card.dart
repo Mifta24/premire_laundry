@@ -8,11 +8,7 @@ class OrderCard extends StatelessWidget {
   final OrderModel order;
   final VoidCallback? onTap;
 
-  const OrderCard({
-    super.key,
-    required this.order,
-    this.onTap,
-  });
+  const OrderCard({super.key, required this.order, this.onTap});
 
   String _orderTypeLabel(String type) {
     switch (type) {
@@ -25,6 +21,14 @@ class OrderCard extends StatelessWidget {
       default:
         return type;
     }
+  }
+
+  String _displayStatus(OrderModel order) {
+    if (order.status == 'waiting_payment' &&
+        order.paymentStatus == 'waiting_verification') {
+      return 'waiting_verification';
+    }
+    return order.status;
   }
 
   @override
@@ -53,22 +57,24 @@ class OrderCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  StatusBadge(status: order.status),
+                  StatusBadge(status: _displayStatus(order)),
                 ],
               ),
               const SizedBox(height: 8),
               Row(
                 children: [
-                  Icon(Icons.local_laundry_service,
-                      size: 16, color: Colors.grey[600]),
+                  Icon(
+                    Icons.local_laundry_service,
+                    size: 16,
+                    color: Colors.grey[600],
+                  ),
                   const SizedBox(width: 4),
                   Text(
                     _orderTypeLabel(order.orderType),
                     style: TextStyle(color: Colors.grey[600], fontSize: 13),
                   ),
                   const SizedBox(width: 16),
-                  Icon(Icons.calendar_today,
-                      size: 16, color: Colors.grey[600]),
+                  Icon(Icons.calendar_today, size: 16, color: Colors.grey[600]),
                   const SizedBox(width: 4),
                   Text(
                     '${order.createdAt.day}/${order.createdAt.month}/${order.createdAt.year}',

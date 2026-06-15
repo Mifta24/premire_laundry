@@ -226,21 +226,27 @@ class CustomerProvider extends ChangeNotifier {
     _setLoading(true);
     _setError(null);
     try {
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) {
+        throw Exception('User belum login');
+      }
+
       final fileName =
           'proof_${orderId}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final filePath = '$userId/$orderId/$fileName';
       final bytes = await imageFile.readAsBytes();
 
       await _supabase.storage
           .from('payment-proofs')
           .uploadBinary(
-            fileName,
+            filePath,
             bytes,
             fileOptions: const FileOptions(contentType: 'image/jpeg'),
           );
 
       final publicUrl = _supabase.storage
           .from('payment-proofs')
-          .getPublicUrl(fileName);
+          .getPublicUrl(filePath);
 
       await _supabase
           .from('payments')
@@ -348,6 +354,25 @@ class CustomerProvider extends ChangeNotifier {
     _setLoading(true);
     _setError(null);
     try {
+      if (customerId.isEmpty) {
+        throw Exception('User belum login');
+      }
+
+      final existingPayment = await _supabase
+          .from('payments')
+          .select('id')
+          .eq('order_id', orderId)
+          .eq('customer_id', customerId)
+          .eq('method', method)
+          .inFilter('status', ['pending', 'waiting_verification'])
+          .order('created_at', ascending: false)
+          .limit(1)
+          .maybeSingle();
+
+      if (existingPayment != null) {
+        return existingPayment['id'] as String?;
+      }
+
       final paymentId = _uuid.v4();
       await _supabase.from('payments').insert({
         'id': paymentId,

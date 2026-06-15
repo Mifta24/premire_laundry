@@ -20,6 +20,7 @@ class QrisPage extends StatefulWidget {
 class _QrisPageState extends State<QrisPage> {
   String? _qrisImageUrl;
   String? _paymentId;
+  String? _loadError;
   File? _proofImage;
   bool _isLoading = false;
   bool _uploaded = false;
@@ -34,6 +35,7 @@ class _QrisPageState extends State<QrisPage> {
     setState(() => _isLoading = true);
     try {
       final supabase = Supabase.instance.client;
+      final customerProvider = context.read<CustomerProvider>();
 
       // Get QRIS image URL from settings
       final setting = await supabase
@@ -46,19 +48,48 @@ class _QrisPageState extends State<QrisPage> {
       }
 
       // Get payment record for this order
-      final paymentData = await supabase
+      var paymentData = await supabase
           .from('payments')
           .select('id')
           .eq('order_id', widget.orderId)
           .eq('method', 'manual_qris')
+          .order('created_at', ascending: false)
+          .limit(1)
           .maybeSingle();
+
+      if (paymentData == null) {
+        final userId = supabase.auth.currentUser?.id;
+        if (userId == null) {
+          throw Exception('User belum login');
+        }
+
+        final orderData = await supabase
+            .from('orders')
+            .select('total_amount')
+            .eq('id', widget.orderId)
+            .single();
+
+        final paymentId = await customerProvider.createPayment(
+          orderId: widget.orderId,
+          customerId: userId,
+          method: 'manual_qris',
+          amount: (orderData['total_amount'] as num?)?.toDouble() ?? 0,
+        );
+
+        if (paymentId != null) {
+          paymentData = {'id': paymentId};
+        }
+      }
+
       if (paymentData != null) {
         _paymentId = paymentData['id'] as String?;
       }
     } catch (e) {
-      // ignore
+      _loadError = e.toString();
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -76,34 +107,44 @@ class _QrisPageState extends State<QrisPage> {
   Future<void> _upload() async {
     if (_proofImage == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Pilih foto bukti pembayaran terlebih dahulu')),
+        const SnackBar(
+          content: Text('Pilih foto bukti pembayaran terlebih dahulu'),
+        ),
       );
       return;
     }
     if (_paymentId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Data pembayaran tidak ditemukan')),
+        SnackBar(
+          content: Text(_loadError ?? 'Data pembayaran tidak ditemukan'),
+          backgroundColor: AppColors.error,
+        ),
       );
       return;
     }
 
     final provider = context.read<CustomerProvider>();
     final ok = await provider.uploadPaymentProof(
-        widget.orderId, _paymentId!, _proofImage!);
+      widget.orderId,
+      _paymentId!,
+      _proofImage!,
+    );
 
     if (!mounted) return;
     if (ok) {
       setState(() => _uploaded = true);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content: Text('Bukti pembayaran berhasil dikirim!'),
-            backgroundColor: AppColors.success),
+          content: Text('Bukti pembayaran berhasil dikirim!'),
+          backgroundColor: AppColors.success,
+        ),
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-            content: Text(provider.error ?? 'Gagal mengunggah bukti'),
-            backgroundColor: AppColors.error),
+          content: Text(provider.error ?? 'Gagal mengunggah bukti'),
+          backgroundColor: AppColors.error,
+        ),
       );
     }
   }
@@ -128,13 +169,18 @@ class _QrisPageState extends State<QrisPage> {
                 children: [
                   if (_uploaded) ...[
                     const SizedBox(height: 20),
-                    const Icon(Icons.check_circle,
-                        size: 80, color: AppColors.success),
+                    const Icon(
+                      Icons.check_circle,
+                      size: 80,
+                      color: AppColors.success,
+                    ),
                     const SizedBox(height: 16),
                     const Text(
                       'Bukti Pembayaran Terkirim',
                       style: TextStyle(
-                          fontSize: 20, fontWeight: FontWeight.bold),
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     Text(
@@ -151,7 +197,9 @@ class _QrisPageState extends State<QrisPage> {
                     const Text(
                       'Scan QR Code di bawah ini',
                       style: TextStyle(
-                          fontSize: 16, fontWeight: FontWeight.bold),
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     Text(
@@ -161,7 +209,8 @@ class _QrisPageState extends State<QrisPage> {
                     const SizedBox(height: 20),
                     Card(
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16)),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
                       child: Padding(
                         padding: const EdgeInsets.all(16),
                         child: _qrisImageUrl != null
@@ -174,20 +223,27 @@ class _QrisPageState extends State<QrisPage> {
                                   width: 240,
                                   height: 240,
                                   child: Center(
-                                      child: CircularProgressIndicator()),
+                                    child: CircularProgressIndicator(),
+                                  ),
                                 ),
                                 errorWidget: (ctx, url, err) => const SizedBox(
                                   width: 240,
                                   height: 240,
-                                  child: Icon(Icons.qr_code,
-                                      size: 120, color: Colors.grey),
+                                  child: Icon(
+                                    Icons.qr_code,
+                                    size: 120,
+                                    color: Colors.grey,
+                                  ),
                                 ),
                               )
                             : const SizedBox(
                                 width: 240,
                                 height: 240,
-                                child: Icon(Icons.qr_code,
-                                    size: 120, color: Colors.grey),
+                                child: Icon(
+                                  Icons.qr_code,
+                                  size: 120,
+                                  color: Colors.grey,
+                                ),
                               ),
                       ),
                     ),
@@ -202,10 +258,14 @@ class _QrisPageState extends State<QrisPage> {
                       child: const Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Petunjuk Pembayaran:',
-                              style: TextStyle(fontWeight: FontWeight.bold)),
+                          Text(
+                            'Petunjuk Pembayaran:',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
                           SizedBox(height: 8),
-                          Text('1. Buka aplikasi mobile banking atau e-wallet Anda'),
+                          Text(
+                            '1. Buka aplikasi mobile banking atau e-wallet Anda',
+                          ),
                           Text('2. Pilih fitur Scan QR / QRIS'),
                           Text('3. Scan QR Code di atas'),
                           Text('4. Konfirmasi pembayaran'),
@@ -217,9 +277,13 @@ class _QrisPageState extends State<QrisPage> {
                     const SizedBox(height: 24),
                     const Align(
                       alignment: Alignment.centerLeft,
-                      child: Text('Upload Bukti Pembayaran',
-                          style: TextStyle(
-                              fontSize: 15, fontWeight: FontWeight.bold)),
+                      child: Text(
+                        'Upload Bukti Pembayaran',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 12),
                     GestureDetector(
@@ -231,24 +295,31 @@ class _QrisPageState extends State<QrisPage> {
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                              color: AppColors.primary.withValues(alpha: 0.4),
-                              style: BorderStyle.solid),
+                            color: AppColors.primary.withValues(alpha: 0.4),
+                            style: BorderStyle.solid,
+                          ),
                         ),
                         child: _proofImage != null
                             ? ClipRRect(
                                 borderRadius: BorderRadius.circular(12),
-                                child: Image.file(_proofImage!,
-                                    fit: BoxFit.cover),
+                                child: Image.file(
+                                  _proofImage!,
+                                  fit: BoxFit.cover,
+                                ),
                               )
                             : Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Icon(Icons.cloud_upload_outlined,
-                                      size: 48, color: Colors.grey[400]),
+                                  Icon(
+                                    Icons.cloud_upload_outlined,
+                                    size: 48,
+                                    color: Colors.grey[400],
+                                  ),
                                   const SizedBox(height: 8),
-                                  Text('Ketuk untuk memilih foto',
-                                      style: TextStyle(
-                                          color: Colors.grey[600])),
+                                  Text(
+                                    'Ketuk untuk memilih foto',
+                                    style: TextStyle(color: Colors.grey[600]),
+                                  ),
                                 ],
                               ),
                       ),
