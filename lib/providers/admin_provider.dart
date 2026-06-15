@@ -6,6 +6,7 @@ import '../models/payment_model.dart';
 import '../models/laundry_service_model.dart';
 import '../models/profile_model.dart';
 import '../models/delivery_fee_model.dart';
+import '../models/courier_task_model.dart';
 
 class AdminProvider extends ChangeNotifier {
   final _supabase = Supabase.instance.client;
@@ -28,6 +29,14 @@ class AdminProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
 
+  List<T> _uniqueBy<T>(Iterable<T> items, String Function(T item) keyOf) {
+    final seen = <String>{};
+    return [
+      for (final item in items)
+        if (seen.add(keyOf(item))) item,
+    ];
+  }
+
   void _setLoading(bool value) {
     _isLoading = value;
     notifyListeners();
@@ -46,9 +55,12 @@ class AdminProvider extends ChangeNotifier {
           .from('orders')
           .select('*, order_items(*), payments(*)')
           .order('created_at', ascending: false);
-      _allOrders = (data as List<dynamic>)
-          .map((o) => OrderModel.fromJson(o as Map<String, dynamic>))
-          .toList();
+      _allOrders = _uniqueBy(
+        (data as List<dynamic>).map(
+          (o) => OrderModel.fromJson(o as Map<String, dynamic>),
+        ),
+        (order) => order.id,
+      );
       notifyListeners();
     } catch (e) {
       _setError(e.toString());
@@ -66,9 +78,12 @@ class AdminProvider extends ChangeNotifier {
           .select()
           .eq('status', 'waiting_verification')
           .order('created_at', ascending: false);
-      _pendingPayments = (data as List<dynamic>)
-          .map((p) => PaymentModel.fromJson(p as Map<String, dynamic>))
-          .toList();
+      _pendingPayments = _uniqueBy(
+        (data as List<dynamic>).map(
+          (p) => PaymentModel.fromJson(p as Map<String, dynamic>),
+        ),
+        (payment) => payment.id,
+      );
       notifyListeners();
     } catch (e) {
       _setError(e.toString());
@@ -85,9 +100,12 @@ class AdminProvider extends ChangeNotifier {
           .from('laundry_services')
           .select()
           .order('name');
-      _services = (data as List<dynamic>)
-          .map((s) => LaundryServiceModel.fromJson(s as Map<String, dynamic>))
-          .toList();
+      _services = _uniqueBy(
+        (data as List<dynamic>).map(
+          (s) => LaundryServiceModel.fromJson(s as Map<String, dynamic>),
+        ),
+        (service) => service.id,
+      );
       notifyListeners();
     } catch (e) {
       _setError(e.toString());
@@ -105,9 +123,12 @@ class AdminProvider extends ChangeNotifier {
           .select()
           .eq('role', 'courier')
           .order('name');
-      _couriers = (data as List<dynamic>)
-          .map((c) => ProfileModel.fromJson(c as Map<String, dynamic>))
-          .toList();
+      _couriers = _uniqueBy(
+        (data as List<dynamic>).map(
+          (c) => ProfileModel.fromJson(c as Map<String, dynamic>),
+        ),
+        (courier) => courier.userId,
+      );
       notifyListeners();
     } catch (e) {
       _setError(e.toString());
@@ -124,9 +145,12 @@ class AdminProvider extends ChangeNotifier {
           .from('delivery_fees')
           .select()
           .order('min_distance_km');
-      _deliveryFees = (data as List<dynamic>)
-          .map((f) => DeliveryFeeModel.fromJson(f as Map<String, dynamic>))
-          .toList();
+      _deliveryFees = _uniqueBy(
+        (data as List<dynamic>).map(
+          (f) => DeliveryFeeModel.fromJson(f as Map<String, dynamic>),
+        ),
+        (fee) => fee.id,
+      );
       notifyListeners();
     } catch (e) {
       _setError(e.toString());
@@ -135,14 +159,14 @@ class AdminProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> updateOrderStatus(
-      String orderId, String status, String? note) async {
+  Future<bool> updateOrderStatus(String orderId, String status) async {
     _setLoading(true);
     _setError(null);
     try {
       await _supabase
           .from('orders')
-          .update({'status': status}).eq('id', orderId);
+          .update({'status': status})
+          .eq('id', orderId);
 
       await loadAllOrders();
       return true;
@@ -155,10 +179,25 @@ class AdminProvider extends ChangeNotifier {
   }
 
   Future<bool> assignCourier(
-      String orderId, String courierId, String taskType) async {
+    String orderId,
+    String courierId,
+    String taskType,
+  ) async {
     _setLoading(true);
     _setError(null);
     try {
+      final existingTasks = await _supabase
+          .from('courier_tasks')
+          .select()
+          .eq('order_id', orderId)
+          .eq('task_type', taskType)
+          .not('status', 'in', '(completed,cancelled)');
+
+      if ((existingTasks as List<dynamic>).isNotEmpty) {
+        _setError('Tugas kurir untuk tipe ini sudah ada');
+        return false;
+      }
+
       await _supabase.from('courier_tasks').insert({
         'id': _uuid.v4(),
         'order_id': orderId,
@@ -167,12 +206,40 @@ class AdminProvider extends ChangeNotifier {
         'status': 'assigned',
         'assigned_at': DateTime.now().toIso8601String(),
       });
+
+      if (taskType == 'pickup') {
+        await _supabase
+            .from('orders')
+            .update({'status': 'waiting_pickup'})
+            .eq('id', orderId);
+      }
+
+      await loadAllOrders();
       return true;
     } catch (e) {
       _setError(e.toString());
       return false;
     } finally {
       _setLoading(false);
+    }
+  }
+
+  Future<List<CourierTaskModel>> getCourierTasksByOrder(String orderId) async {
+    try {
+      final data = await _supabase
+          .from('courier_tasks')
+          .select()
+          .eq('order_id', orderId)
+          .order('assigned_at', ascending: false);
+      return _uniqueBy(
+        (data as List<dynamic>).map(
+          (t) => CourierTaskModel.fromJson(t as Map<String, dynamic>),
+        ),
+        (task) => task.id,
+      );
+    } catch (e) {
+      _setError(e.toString());
+      return [];
     }
   }
 
@@ -186,10 +253,7 @@ class AdminProvider extends ChangeNotifier {
         updateData['paid_at'] = DateTime.now().toIso8601String();
       }
 
-      await _supabase
-          .from('payments')
-          .update(updateData)
-          .eq('id', paymentId);
+      await _supabase.from('payments').update(updateData).eq('id', paymentId);
 
       // Also update the order payment_status and order status
       final paymentData = await _supabase
@@ -200,14 +264,15 @@ class AdminProvider extends ChangeNotifier {
       final orderId = paymentData['order_id'] as String;
 
       if (isValid) {
-        await _supabase.from('orders').update({
-          'payment_status': 'paid',
-          'status': 'paid',
-        }).eq('id', orderId);
+        await _supabase
+            .from('orders')
+            .update({'payment_status': 'paid', 'status': 'paid'})
+            .eq('id', orderId);
       } else {
-        await _supabase.from('orders').update({
-          'payment_status': 'rejected',
-        }).eq('id', orderId);
+        await _supabase
+            .from('orders')
+            .update({'payment_status': 'rejected'})
+            .eq('id', orderId);
       }
 
       await loadPendingPayments();
@@ -221,7 +286,10 @@ class AdminProvider extends ChangeNotifier {
   }
 
   Future<bool> updateOrderWeight(
-      String orderId, double weightKg, String serviceId) async {
+    String orderId,
+    double weightKg,
+    String serviceId,
+  ) async {
     _setLoading(true);
     _setError(null);
     try {
@@ -242,12 +310,16 @@ class AdminProvider extends ChangeNotifier {
           .eq('service_id', serviceId);
 
       if ((existingItems as List).isNotEmpty) {
-        await _supabase.from('order_items').update({
-          'weight_kg': weightKg,
-          'price': pricePerKg,
-          'subtotal': subtotal,
-          'quantity': 1,
-        }).eq('order_id', orderId).eq('service_id', serviceId);
+        await _supabase
+            .from('order_items')
+            .update({
+              'weight_kg': weightKg,
+              'price': pricePerKg,
+              'subtotal': subtotal,
+              'quantity': 1,
+            })
+            .eq('order_id', orderId)
+            .eq('service_id', serviceId);
       } else {
         final serviceInfo = await _supabase
             .from('laundry_services')
@@ -277,12 +349,15 @@ class AdminProvider extends ChangeNotifier {
       final discount = (orderData['discount_amount'] as num).toDouble();
       final total = subtotal + deliveryFee - discount;
 
-      await _supabase.from('orders').update({
-        'subtotal': subtotal,
-        'total_amount': total,
-        'status': 'waiting_payment',
-        'payment_status': 'pending',
-      }).eq('id', orderId);
+      await _supabase
+          .from('orders')
+          .update({
+            'subtotal': subtotal,
+            'total_amount': total,
+            'status': 'waiting_payment',
+            'payment_status': 'pending',
+          })
+          .eq('id', orderId);
 
       await loadAllOrders();
       return true;
@@ -295,7 +370,11 @@ class AdminProvider extends ChangeNotifier {
   }
 
   Future<bool> addService(
-      String name, String type, double price, String unit) async {
+    String name,
+    String type,
+    double price,
+    String unit,
+  ) async {
     _setLoading(true);
     _setError(null);
     try {
@@ -317,18 +396,27 @@ class AdminProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> updateService(String serviceId, String name, String type,
-      double price, String unit, bool isActive) async {
+  Future<bool> updateService(
+    String serviceId,
+    String name,
+    String type,
+    double price,
+    String unit,
+    bool isActive,
+  ) async {
     _setLoading(true);
     _setError(null);
     try {
-      await _supabase.from('laundry_services').update({
-        'name': name,
-        'service_type': type,
-        'price': price,
-        'unit': unit,
-        'is_active': isActive,
-      }).eq('id', serviceId);
+      await _supabase
+          .from('laundry_services')
+          .update({
+            'name': name,
+            'service_type': type,
+            'price': price,
+            'unit': unit,
+            'is_active': isActive,
+          })
+          .eq('id', serviceId);
       await loadServices();
       return true;
     } catch (e) {
@@ -343,10 +431,7 @@ class AdminProvider extends ChangeNotifier {
     _setLoading(true);
     _setError(null);
     try {
-      await _supabase
-          .from('laundry_services')
-          .delete()
-          .eq('id', serviceId);
+      await _supabase.from('laundry_services').delete().eq('id', serviceId);
       await loadServices();
       return true;
     } catch (e) {
@@ -358,7 +443,11 @@ class AdminProvider extends ChangeNotifier {
   }
 
   Future<bool> addDeliveryFee(
-      String name, double minKm, double maxKm, double fee) async {
+    String name,
+    double minKm,
+    double maxKm,
+    double fee,
+  ) async {
     _setLoading(true);
     _setError(null);
     try {
@@ -380,18 +469,27 @@ class AdminProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> updateDeliveryFee(String feeId, String name, double minKm,
-      double maxKm, double fee, bool isActive) async {
+  Future<bool> updateDeliveryFee(
+    String feeId,
+    String name,
+    double minKm,
+    double maxKm,
+    double fee,
+    bool isActive,
+  ) async {
     _setLoading(true);
     _setError(null);
     try {
-      await _supabase.from('delivery_fees').update({
-        'name': name,
-        'min_distance_km': minKm,
-        'max_distance_km': maxKm,
-        'fee': fee,
-        'is_active': isActive,
-      }).eq('id', feeId);
+      await _supabase
+          .from('delivery_fees')
+          .update({
+            'name': name,
+            'min_distance_km': minKm,
+            'max_distance_km': maxKm,
+            'fee': fee,
+            'is_active': isActive,
+          })
+          .eq('id', feeId);
       await loadDeliveryFees();
       return true;
     } catch (e) {
@@ -417,7 +515,8 @@ class AdminProvider extends ChangeNotifier {
   }
 
   Future<List<Map<String, dynamic>>> getOrderStatusHistory(
-      String orderId) async {
+    String orderId,
+  ) async {
     try {
       final data = await _supabase
           .from('order_status_histories')

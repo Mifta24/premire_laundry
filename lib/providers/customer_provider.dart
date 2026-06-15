@@ -27,6 +27,14 @@ class CustomerProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
 
+  List<T> _uniqueBy<T>(Iterable<T> items, String Function(T item) keyOf) {
+    final seen = <String>{};
+    return [
+      for (final item in items)
+        if (seen.add(keyOf(item))) item,
+    ];
+  }
+
   void _setLoading(bool value) {
     _isLoading = value;
     notifyListeners();
@@ -46,9 +54,12 @@ class CustomerProvider extends ChangeNotifier {
           .select('*, order_items(*), payments(*)')
           .eq('customer_id', userId)
           .order('created_at', ascending: false);
-      _orders = (data as List)
-          .map((o) => OrderModel.fromJson(o as Map<String, dynamic>))
-          .toList();
+      _orders = _uniqueBy(
+        (data as List).map(
+          (o) => OrderModel.fromJson(o as Map<String, dynamic>),
+        ),
+        (order) => order.id,
+      );
       notifyListeners();
     } catch (e) {
       _setError(e.toString());
@@ -66,9 +77,12 @@ class CustomerProvider extends ChangeNotifier {
           .select()
           .eq('user_id', userId)
           .order('is_default', ascending: false);
-      _addresses = (data as List)
-          .map((a) => AddressModel.fromJson(a as Map<String, dynamic>))
-          .toList();
+      _addresses = _uniqueBy(
+        (data as List).map(
+          (a) => AddressModel.fromJson(a as Map<String, dynamic>),
+        ),
+        (address) => address.id,
+      );
       notifyListeners();
     } catch (e) {
       _setError(e.toString());
@@ -86,9 +100,12 @@ class CustomerProvider extends ChangeNotifier {
           .select()
           .eq('user_id', userId)
           .order('status');
-      _vouchers = (data as List)
-          .map((v) => VoucherModel.fromJson(v as Map<String, dynamic>))
-          .toList();
+      _vouchers = _uniqueBy(
+        (data as List).map(
+          (v) => VoucherModel.fromJson(v as Map<String, dynamic>),
+        ),
+        (voucher) => voucher.id,
+      );
       notifyListeners();
     } catch (e) {
       _setError(e.toString());
@@ -158,11 +175,7 @@ class CustomerProvider extends ChangeNotifier {
 
       if (items.isNotEmpty) {
         final itemsToInsert = items
-            .map((item) => {
-                  ...item,
-                  'order_id': orderId,
-                  'id': _uuid.v4(),
-                })
+            .map((item) => {...item, 'order_id': orderId, 'id': _uuid.v4()})
             .toList();
         await _supabase.from('order_items').insert(itemsToInsert);
       }
@@ -171,8 +184,8 @@ class CustomerProvider extends ChangeNotifier {
       if (voucherCode != null && voucherCode.isNotEmpty) {
         await _supabase
             .from('vouchers')
-            .update({'status': 'used', 'used_order_id': orderId}).eq(
-                'code', voucherCode);
+            .update({'status': 'used', 'used_order_id': orderId})
+            .eq('code', voucherCode);
       }
 
       return orderId;
@@ -190,7 +203,8 @@ class CustomerProvider extends ChangeNotifier {
     try {
       await _supabase
           .from('orders')
-          .update({'status': 'cancelled'}).eq('id', orderId);
+          .update({'status': 'cancelled'})
+          .eq('id', orderId);
       final idx = _orders.indexWhere((o) => o.id == orderId);
       if (idx != -1) {
         await loadOrders(_orders[idx].customerId);
@@ -205,30 +219,41 @@ class CustomerProvider extends ChangeNotifier {
   }
 
   Future<bool> uploadPaymentProof(
-      String orderId, String paymentId, File imageFile) async {
+    String orderId,
+    String paymentId,
+    File imageFile,
+  ) async {
     _setLoading(true);
     _setError(null);
     try {
-      final fileName = 'proof_${orderId}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final fileName =
+          'proof_${orderId}_${DateTime.now().millisecondsSinceEpoch}.jpg';
       final bytes = await imageFile.readAsBytes();
 
       await _supabase.storage
           .from('payment-proofs')
-          .uploadBinary(fileName, bytes,
-              fileOptions: const FileOptions(contentType: 'image/jpeg'));
+          .uploadBinary(
+            fileName,
+            bytes,
+            fileOptions: const FileOptions(contentType: 'image/jpeg'),
+          );
 
       final publicUrl = _supabase.storage
           .from('payment-proofs')
           .getPublicUrl(fileName);
 
-      await _supabase.from('payments').update({
-        'payment_proof_url': publicUrl,
-        'status': 'waiting_verification',
-      }).eq('id', paymentId);
+      await _supabase
+          .from('payments')
+          .update({
+            'payment_proof_url': publicUrl,
+            'status': 'waiting_verification',
+          })
+          .eq('id', paymentId);
 
       await _supabase
           .from('orders')
-          .update({'payment_status': 'waiting_verification'}).eq('id', orderId);
+          .update({'payment_status': 'waiting_verification'})
+          .eq('id', orderId);
 
       return true;
     } catch (e) {
@@ -254,7 +279,8 @@ class CustomerProvider extends ChangeNotifier {
       if (isDefault) {
         await _supabase
             .from('addresses')
-            .update({'is_default': false}).eq('user_id', userId);
+            .update({'is_default': false})
+            .eq('user_id', userId);
       }
       await _supabase.from('addresses').insert({
         'id': _uuid.v4(),
@@ -297,10 +323,12 @@ class CustomerProvider extends ChangeNotifier {
     try {
       await _supabase
           .from('addresses')
-          .update({'is_default': false}).eq('user_id', userId);
+          .update({'is_default': false})
+          .eq('user_id', userId);
       await _supabase
           .from('addresses')
-          .update({'is_default': true}).eq('id', addressId);
+          .update({'is_default': true})
+          .eq('id', addressId);
       await loadAddresses(userId);
       return true;
     } catch (e) {

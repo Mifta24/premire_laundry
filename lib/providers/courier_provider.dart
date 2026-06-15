@@ -19,6 +19,14 @@ class CourierProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
 
+  List<T> _uniqueBy<T>(Iterable<T> items, String Function(T item) keyOf) {
+    final seen = <String>{};
+    return [
+      for (final item in items)
+        if (seen.add(keyOf(item))) item,
+    ];
+  }
+
   void _setLoading(bool value) {
     _isLoading = value;
     notifyListeners();
@@ -41,9 +49,12 @@ class CourierProvider extends ChangeNotifier {
           .order('assigned_at', ascending: false);
 
       final tasks = await _buildTasksWithCustomerNames(data as List<dynamic>);
+      final uniqueTasks = _uniqueBy(tasks, (task) => task.id);
 
-      _pickupTasks = tasks.where((t) => t.taskType == 'pickup').toList();
-      _deliveryTasks = tasks.where((t) => t.taskType == 'delivery').toList();
+      _pickupTasks = uniqueTasks.where((t) => t.taskType == 'pickup').toList();
+      _deliveryTasks = uniqueTasks
+          .where((t) => t.taskType == 'delivery')
+          .toList();
       notifyListeners();
     } catch (e) {
       _setError(e.toString());

@@ -37,6 +37,23 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
   double _storeLat = -6.200000;
   double _storeLng = 106.816666;
 
+  List<T> _uniqueBy<T>(Iterable<T> items, String Function(T item) keyOf) {
+    final seen = <String>{};
+    return [
+      for (final item in items)
+        if (seen.add(keyOf(item))) item,
+    ];
+  }
+
+  String _servicePickerKey(LaundryServiceModel service) {
+    return [
+      service.serviceType.trim().toLowerCase(),
+      service.name.trim().toLowerCase(),
+      service.unit.trim().toLowerCase(),
+      service.price.toStringAsFixed(2),
+    ].join('|');
+  }
+
   @override
   void initState() {
     super.initState();
@@ -63,9 +80,12 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
             .select()
             .eq('service_type', 'satuan')
             .eq('is_active', true);
-        _services = (servicesData as List<dynamic>)
-            .map((s) => LaundryServiceModel.fromJson(s as Map<String, dynamic>))
-            .toList();
+        _services = _uniqueBy(
+          (servicesData as List<dynamic>).map(
+            (s) => LaundryServiceModel.fromJson(s as Map<String, dynamic>),
+          ),
+          _servicePickerKey,
+        );
       }
 
       // Load addresses
@@ -75,9 +95,12 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
             .select()
             .eq('user_id', userId)
             .order('is_default', ascending: false);
-        _addresses = (addrData as List<dynamic>)
-            .map((a) => AddressModel.fromJson(a as Map<String, dynamic>))
-            .toList();
+        _addresses = _uniqueBy(
+          (addrData as List<dynamic>).map(
+            (a) => AddressModel.fromJson(a as Map<String, dynamic>),
+          ),
+          (address) => address.id,
+        );
         if (_addresses.isNotEmpty) {
           _selectedAddress = _addresses.firstWhere(
             (a) => a.isDefault,
@@ -107,10 +130,12 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
             .eq('key', 'store_longitude')
             .maybeSingle();
         if (latSetting != null) {
-          _storeLat = double.tryParse(latSetting['value'] as String) ?? _storeLat;
+          _storeLat =
+              double.tryParse(latSetting['value'] as String) ?? _storeLat;
         }
         if (lngSetting != null) {
-          _storeLng = double.tryParse(lngSetting['value'] as String) ?? _storeLng;
+          _storeLng =
+              double.tryParse(lngSetting['value'] as String) ?? _storeLng;
         }
       } catch (_) {}
 
@@ -118,7 +143,10 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gagal memuat data: $e'), backgroundColor: AppColors.error),
+          SnackBar(
+            content: Text('Gagal memuat data: $e'),
+            backgroundColor: AppColors.error,
+          ),
         );
       }
     } finally {
@@ -126,11 +154,17 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
     }
   }
 
-  double _haversineDistance(double lat1, double lng1, double lat2, double lng2) {
+  double _haversineDistance(
+    double lat1,
+    double lng1,
+    double lat2,
+    double lng2,
+  ) {
     const r = 6371.0;
     final dLat = _toRad(lat2 - lat1);
     final dLng = _toRad(lng2 - lng1);
-    final a = sin(dLat / 2) * sin(dLat / 2) +
+    final a =
+        sin(dLat / 2) * sin(dLat / 2) +
         cos(_toRad(lat1)) * cos(_toRad(lat2)) * sin(dLng / 2) * sin(dLng / 2);
     final c = 2 * atan2(sqrt(a), sqrt(1 - a));
     return r * c;
@@ -178,21 +212,25 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
     if (widget.orderType == 'kiloan') return [];
     return _services
         .where((s) => (_selectedQuantities[s.id] ?? 0) > 0)
-        .map((s) => {
-              'service_id': s.id,
-              'service_name': s.name,
-              'service_type': s.serviceType,
-              'quantity': _selectedQuantities[s.id] ?? 0,
-              'price': s.price,
-              'subtotal': s.price * (_selectedQuantities[s.id] ?? 0),
-            })
+        .map(
+          (s) => {
+            'service_id': s.id,
+            'service_name': s.name,
+            'service_type': s.serviceType,
+            'quantity': _selectedQuantities[s.id] ?? 0,
+            'price': s.price,
+            'subtotal': s.price * (_selectedQuantities[s.id] ?? 0),
+          },
+        )
         .toList();
   }
 
   Future<void> _submitOrder() async {
     if (_selectedAddress == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Pilih alamat pengiriman terlebih dahulu')),
+        const SnackBar(
+          content: Text('Pilih alamat pengiriman terlebih dahulu'),
+        ),
       );
       return;
     }
@@ -208,10 +246,13 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
     final provider = context.read<CustomerProvider>();
 
     double? distKm;
-    if (_selectedAddress!.latitude != null && _selectedAddress!.longitude != null) {
+    if (_selectedAddress!.latitude != null &&
+        _selectedAddress!.longitude != null) {
       distKm = _haversineDistance(
-        _storeLat, _storeLng,
-        _selectedAddress!.latitude!, _selectedAddress!.longitude!,
+        _storeLat,
+        _storeLng,
+        _selectedAddress!.latitude!,
+        _selectedAddress!.longitude!,
       );
     }
 
@@ -255,9 +296,9 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.orderType == 'kiloan'
-            ? 'Order Kiloan'
-            : 'Order Satuan'),
+        title: Text(
+          widget.orderType == 'kiloan' ? 'Order Kiloan' : 'Order Satuan',
+        ),
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
       ),
@@ -269,11 +310,7 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
                 Expanded(
                   child: IndexedStack(
                     index: _step,
-                    children: [
-                      _buildStep1(),
-                      _buildStep2(),
-                      _buildStep3(),
-                    ],
+                    children: [_buildStep1(), _buildStep2(), _buildStep3()],
                   ),
                 ),
                 _buildNavigationButtons(),
@@ -309,8 +346,8 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
           backgroundColor: isDone
               ? AppColors.success
               : isActive
-                  ? AppColors.primary
-                  : Colors.grey[300],
+              ? AppColors.primary
+              : Colors.grey[300],
           child: isDone
               ? const Icon(Icons.check, color: Colors.white, size: 16)
               : Text(
@@ -322,10 +359,13 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
                 ),
         ),
         const SizedBox(height: 4),
-        Text(label,
-            style: TextStyle(
-                fontSize: 11,
-                color: isActive ? AppColors.primary : Colors.grey)),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            color: isActive ? AppColors.primary : Colors.grey,
+          ),
+        ),
       ],
     );
   }
@@ -346,8 +386,10 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (widget.orderType == 'satuan') ...[
-            const Text('Pilih Layanan',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            const Text(
+              'Pilih Layanan',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 12),
             if (_services.isEmpty)
               const Center(child: Text('Tidak ada layanan tersedia'))
@@ -357,11 +399,11 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
                 return Card(
                   margin: const EdgeInsets.only(bottom: 8),
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10)),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                   child: ListTile(
                     title: Text(svc.name),
-                    subtitle: Text(
-                        '${formatRupiah(svc.price)} / ${svc.unit}'),
+                    subtitle: Text('${formatRupiah(svc.price)} / ${svc.unit}'),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -377,10 +419,13 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
                                 }
                               : null,
                         ),
-                        Text('$qty',
-                            style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold)),
+                        Text(
+                          '$qty',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                         IconButton(
                           icon: const Icon(Icons.add_circle_outline),
                           color: AppColors.primary,
@@ -401,7 +446,8 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
           if (widget.orderType == 'kiloan')
             Card(
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
+                borderRadius: BorderRadius.circular(12),
+              ),
               child: const Padding(
                 padding: EdgeInsets.all(16),
                 child: Row(
@@ -425,8 +471,9 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
             decoration: InputDecoration(
               labelText: 'Catatan (opsional)',
               hintText: 'Contoh: Pisahkan pakaian anak-anak',
-              border:
-                  OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
               filled: true,
               fillColor: Colors.white,
             ),
@@ -445,9 +492,10 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Pilih Alamat',
-                  style:
-                      TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              const Text(
+                'Pilih Alamat',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
               TextButton.icon(
                 onPressed: () async {
                   await context.push('/customer/address/add');
@@ -462,7 +510,8 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
           if (_addresses.isEmpty)
             Card(
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
+                borderRadius: BorderRadius.circular(12),
+              ),
               child: const Padding(
                 padding: EdgeInsets.all(20),
                 child: Center(
@@ -489,26 +538,37 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
                   ),
                   title: Row(
                     children: [
-                      Text(addr.label,
-                          style: const TextStyle(fontWeight: FontWeight.bold)),
+                      Text(
+                        addr.label,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
                       if (addr.isDefault) ...[
                         const SizedBox(width: 8),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
                           decoration: BoxDecoration(
                             color: AppColors.primary.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(4),
                           ),
-                          child: const Text('Utama',
-                              style: TextStyle(
-                                  fontSize: 10, color: AppColors.primary)),
+                          child: const Text(
+                            'Utama',
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: AppColors.primary,
+                            ),
+                          ),
                         ),
                       ],
                     ],
                   ),
-                  subtitle: Text(addr.addressText,
-                      maxLines: 2, overflow: TextOverflow.ellipsis),
+                  subtitle: Text(
+                    addr.addressText,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                   trailing: isSelected
                       ? const Icon(Icons.check_circle, color: AppColors.primary)
                       : null,
@@ -530,19 +590,24 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Ringkasan Pesanan',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          const Text(
+            'Ringkasan Pesanan',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 12),
           Card(
             shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12)),
+              borderRadius: BorderRadius.circular(12),
+            ),
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _summaryRow('Tipe',
-                      widget.orderType == 'kiloan' ? 'Kiloan' : 'Satuan'),
+                  _summaryRow(
+                    'Tipe',
+                    widget.orderType == 'kiloan' ? 'Kiloan' : 'Satuan',
+                  ),
                   if (_selectedAddress != null) ...[
                     _summaryRow('Alamat', _selectedAddress!.addressText),
                   ],
@@ -554,22 +619,24 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
           ),
           if (widget.orderType == 'satuan' && _orderItems.isNotEmpty) ...[
             const SizedBox(height: 12),
-            const Text('Item',
-                style:
-                    TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+            const Text(
+              'Item',
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+            ),
             const SizedBox(height: 8),
             Card(
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
+                borderRadius: BorderRadius.circular(12),
+              ),
               child: Column(
                 children: _orderItems
-                    .map((item) => ListTile(
-                          title: Text(item['service_name'] as String),
-                          subtitle:
-                              Text('${item['quantity']} pcs'),
-                          trailing:
-                              Text(formatRupiah(item['subtotal'] as num)),
-                        ))
+                    .map(
+                      (item) => ListTile(
+                        title: Text(item['service_name'] as String),
+                        subtitle: Text('${item['quantity']} pcs'),
+                        trailing: Text(formatRupiah(item['subtotal'] as num)),
+                      ),
+                    )
                     .toList(),
               ),
             ),
@@ -577,7 +644,8 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
           const SizedBox(height: 12),
           Card(
             shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12)),
+              borderRadius: BorderRadius.circular(12),
+            ),
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
@@ -590,10 +658,12 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
                         style: TextStyle(fontSize: 12, color: Colors.orange),
                       ),
                     ),
-                  _amountRow('Subtotal',
-                      widget.orderType == 'kiloan'
-                          ? 'Belum dihitung'
-                          : formatRupiah(_subtotal)),
+                  _amountRow(
+                    'Subtotal',
+                    widget.orderType == 'kiloan'
+                        ? 'Belum dihitung'
+                        : formatRupiah(_subtotal),
+                  ),
                   _amountRow('Ongkir', formatRupiah(_deliveryFee)),
                   const Divider(),
                   _amountRow(
@@ -614,7 +684,8 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
               labelText: 'Kode Voucher (opsional)',
               prefixIcon: const Icon(Icons.card_giftcard),
               border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12)),
+                borderRadius: BorderRadius.circular(12),
+              ),
               filled: true,
               fillColor: Colors.white,
             ),
@@ -632,13 +703,17 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
         children: [
           SizedBox(
             width: 80,
-            child: Text(label,
-                style: TextStyle(color: Colors.grey[600], fontSize: 13)),
+            child: Text(
+              label,
+              style: TextStyle(color: Colors.grey[600], fontSize: 13),
+            ),
           ),
           Expanded(
-              child: Text(value,
-                  style: const TextStyle(
-                      fontWeight: FontWeight.w500, fontSize: 13))),
+            child: Text(
+              value,
+              style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
+            ),
+          ),
         ],
       ),
     );
@@ -650,14 +725,20 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label,
-              style: TextStyle(
-                  fontWeight: bold ? FontWeight.bold : FontWeight.normal)),
-          Text(value,
-              style: TextStyle(
-                  fontWeight: bold ? FontWeight.bold : FontWeight.normal,
-                  fontSize: bold ? 16 : 14,
-                  color: bold ? AppColors.primary : null)),
+          Text(
+            label,
+            style: TextStyle(
+              fontWeight: bold ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
+          Text(
+            value,
+            style: TextStyle(
+              fontWeight: bold ? FontWeight.bold : FontWeight.normal,
+              fontSize: bold ? 16 : 14,
+              color: bold ? AppColors.primary : null,
+            ),
+          ),
         ],
       ),
     );
