@@ -341,8 +341,11 @@ create trigger trg_settings_updated_at
   for each row execute function set_updated_at();
 
 -- Auto-create profile saat user baru register
+-- SET search_path diperlukan di Supabase modern untuk security definer functions
 create or replace function handle_new_user()
-returns trigger language plpgsql security definer as $$
+returns trigger language plpgsql security definer
+SET search_path = public
+as $$
 begin
   insert into profiles (user_id, name, phone, role)
   values (
