@@ -247,6 +247,21 @@ class AdminProvider extends ChangeNotifier {
     _setLoading(true);
     _setError(null);
     try {
+      final paymentData = await _supabase
+          .from('payments')
+          .select('order_id, orders(status)')
+          .eq('id', paymentId)
+          .single();
+      final orderId = paymentData['order_id'] as String;
+      final orderStatus =
+          (paymentData['orders'] as Map<String, dynamic>?)?['status'];
+      if (orderStatus == 'cancelled') {
+        _setError(
+          'Pesanan ini sudah dibatalkan, validasi pembayaran tidak bisa dilakukan',
+        );
+        return false;
+      }
+
       final newStatus = isValid ? 'paid' : 'rejected';
       final updateData = <String, dynamic>{'status': newStatus};
       if (isValid) {
@@ -254,14 +269,6 @@ class AdminProvider extends ChangeNotifier {
       }
 
       await _supabase.from('payments').update(updateData).eq('id', paymentId);
-
-      // Also update the order payment_status and order status
-      final paymentData = await _supabase
-          .from('payments')
-          .select('order_id')
-          .eq('id', paymentId)
-          .single();
-      final orderId = paymentData['order_id'] as String;
 
       if (isValid) {
         await _supabase

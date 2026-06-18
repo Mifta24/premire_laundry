@@ -178,7 +178,8 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
         order.paymentStatus == 'pending' &&
         (order.status == 'waiting_payment' ||
             (order.status == 'created' && order.orderType == 'satuan'));
-    final canCancel = order.status == 'created';
+    final canCancel =
+        order.status == 'created' && order.paymentStatus == 'pending';
 
     return Scaffold(
       appBar: AppBar(

@@ -133,6 +133,16 @@ class CourierProvider extends ChangeNotifier {
     _setLoading(true);
     _setError(null);
     try {
+      final order = await _supabase
+          .from('orders')
+          .select('status')
+          .eq('id', orderId)
+          .single();
+      if (order['status'] == 'cancelled') {
+        _setError('Pesanan ini sudah dibatalkan');
+        return false;
+      }
+
       final updateData = <String, dynamic>{'status': status};
       if (status == 'completed' || status == 'delivered') {
         updateData['completed_at'] = DateTime.now().toIso8601String();
