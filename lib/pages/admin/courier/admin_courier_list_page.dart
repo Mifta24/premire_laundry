@@ -15,6 +15,7 @@ class AdminCourierListPage extends StatefulWidget {
 class _AdminCourierListPageState extends State<AdminCourierListPage> {
   bool _showSearch = false;
   String _query = '';
+  bool? _availableFilter;
 
   @override
   Widget build(BuildContext context) {
@@ -27,6 +28,11 @@ class _AdminCourierListPageState extends State<AdminCourierListPage> {
           .where((c) =>
               c.name.toLowerCase().contains(q) || c.phone.toLowerCase().contains(q))
           .toList();
+    }
+
+    if (_availableFilter != null) {
+      couriers =
+          couriers.where((c) => c.isAvailable == _availableFilter).toList();
     }
 
     if (provider.isLoading && provider.couriers.isEmpty) {
@@ -56,7 +62,29 @@ class _AdminCourierListPageState extends State<AdminCourierListPage> {
                   ),
                 )
               else
-                const Spacer(),
+                Expanded(
+                  child: Row(
+                    children: [
+                      _FilterChip(
+                        label: 'Semua',
+                        selected: _availableFilter == null,
+                        onTap: () => setState(() => _availableFilter = null),
+                      ),
+                      const SizedBox(width: 8),
+                      _FilterChip(
+                        label: 'Aktif',
+                        selected: _availableFilter == true,
+                        onTap: () => setState(() => _availableFilter = true),
+                      ),
+                      const SizedBox(width: 8),
+                      _FilterChip(
+                        label: 'Tidak Aktif',
+                        selected: _availableFilter == false,
+                        onTap: () => setState(() => _availableFilter = false),
+                      ),
+                    ],
+                  ),
+                ),
               IconButton(
                 icon: Icon(_showSearch ? Icons.close : Icons.search,
                     color: Colors.grey),
@@ -181,6 +209,45 @@ class _AdminCourierListPageState extends State<AdminCourierListPage> {
                     ),
         ),
       ],
+    );
+  }
+}
+
+class _FilterChip extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _FilterChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: selected
+              ? AppColors.primary.withValues(alpha: 0.12)
+              : Colors.grey.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: selected ? AppColors.primary : Colors.transparent,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: selected ? AppColors.primary : Colors.grey[700],
+          ),
+        ),
+      ),
     );
   }
 }
