@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../pages/auth/splash_page.dart';
 import '../pages/auth/login_page.dart';
 import '../pages/auth/register_page.dart';
+import '../pages/auth/forgot_password_page.dart';
 import '../pages/customer/customer_home_page.dart';
 import '../pages/customer/order/create_order_page.dart';
 import '../pages/customer/order/order_detail_page.dart';
@@ -14,13 +15,19 @@ import '../pages/customer/payment/payment_page.dart';
 import '../pages/customer/payment/qris_page.dart';
 import '../pages/customer/voucher/voucher_list_page.dart';
 import '../pages/customer/profile/customer_profile_page.dart';
+import '../pages/customer/profile/about_page.dart';
+import '../pages/customer/profile/help_faq_page.dart';
 import '../pages/courier/courier_home_page.dart';
 import '../pages/courier/task_detail_page.dart';
+import '../pages/courier/task_status_page.dart';
 import '../pages/admin/admin_home_page.dart';
+import '../pages/admin/courier/admin_courier_detail_page.dart';
+import '../pages/admin/courier/add_courier_page.dart';
 import '../pages/admin/order/admin_order_detail_page.dart';
 import '../pages/admin/payment/admin_payment_detail_page.dart';
 import '../pages/admin/service/manage_services_page.dart';
 import '../pages/admin/delivery/delivery_fee_page.dart';
+import '../pages/admin/settings/admin_settings_page.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 
@@ -44,6 +51,7 @@ class AppRouter {
         final isAuthenticated = session != null;
         final isAuthRoute = state.matchedLocation == '/login' ||
             state.matchedLocation == '/register' ||
+            state.matchedLocation == '/forgot-password' ||
             state.matchedLocation == '/splash';
 
         if (!isAuthenticated && !isAuthRoute) {
@@ -63,6 +71,10 @@ class AppRouter {
         GoRoute(
           path: '/register',
           builder: (context, state) => const RegisterPage(),
+        ),
+        GoRoute(
+          path: '/forgot-password',
+          builder: (context, state) => const ForgotPasswordPage(),
         ),
         // Customer routes
         GoRoute(
@@ -117,6 +129,14 @@ class AppRouter {
           path: '/customer/profile',
           builder: (context, state) => const CustomerProfilePage(),
         ),
+        GoRoute(
+          path: '/customer/about',
+          builder: (context, state) => const AboutPage(),
+        ),
+        GoRoute(
+          path: '/customer/help',
+          builder: (context, state) => const HelpFaqPage(),
+        ),
         // Courier routes
         GoRoute(
           path: '/courier',
@@ -127,6 +147,13 @@ class AppRouter {
           builder: (context, state) {
             final id = state.pathParameters['id']!;
             return TaskDetailPage(taskId: id);
+          },
+        ),
+        GoRoute(
+          path: '/courier/task/:id/status',
+          builder: (context, state) {
+            final id = state.pathParameters['id']!;
+            return TaskStatusPage(taskId: id);
           },
         ),
         // Admin routes
@@ -149,12 +176,27 @@ class AppRouter {
           },
         ),
         GoRoute(
+          path: '/admin/courier/add',
+          builder: (context, state) => const AddCourierPage(),
+        ),
+        GoRoute(
+          path: '/admin/courier/:id',
+          builder: (context, state) {
+            final id = state.pathParameters['id']!;
+            return AdminCourierDetailPage(courierId: id);
+          },
+        ),
+        GoRoute(
           path: '/admin/services',
           builder: (context, state) => const ManageServicesPage(),
         ),
         GoRoute(
           path: '/admin/delivery-fees',
           builder: (context, state) => const DeliveryFeePage(),
+        ),
+        GoRoute(
+          path: '/admin/settings',
+          builder: (context, state) => const AdminSettingsPage(),
         ),
       ],
     );

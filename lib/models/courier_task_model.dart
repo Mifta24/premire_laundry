@@ -7,8 +7,12 @@ class CourierTaskModel {
   final DateTime? assignedAt;
   final DateTime? completedAt;
   final String? orderCode;
+  final String? orderType;
+  final double? totalAmount;
   final String? customerName;
+  final String? customerPhone;
   final String? addressText;
+  final String? addressNotes;
   final double? addressLatitude;
   final double? addressLongitude;
   final String? customerNotes;
@@ -22,8 +26,12 @@ class CourierTaskModel {
     this.assignedAt,
     this.completedAt,
     this.orderCode,
+    this.orderType,
+    this.totalAmount,
     this.customerName,
+    this.customerPhone,
     this.addressText,
+    this.addressNotes,
     this.addressLatitude,
     this.addressLongitude,
     this.customerNotes,
@@ -31,8 +39,12 @@ class CourierTaskModel {
 
   factory CourierTaskModel.fromJson(Map<String, dynamic> json) {
     String? orderCode;
+    String? orderType;
+    double? totalAmount;
     String? customerName;
+    String? customerPhone;
     String? addressText;
+    String? addressNotes;
     double? addressLatitude;
     double? addressLongitude;
     String? customerNotes;
@@ -40,16 +52,22 @@ class CourierTaskModel {
     if (json['orders'] != null) {
       final order = json['orders'] as Map<String, dynamic>;
       orderCode = order['order_code'] as String?;
+      orderType = order['order_type'] as String?;
+      totalAmount = order['total_amount'] != null
+          ? (order['total_amount'] as num).toDouble()
+          : null;
       customerNotes = order['notes'] as String?;
 
       if (order['profiles'] != null) {
         final profile = order['profiles'] as Map<String, dynamic>;
         customerName = profile['name'] as String?;
+        customerPhone = profile['phone'] as String?;
       }
 
       if (order['addresses'] != null) {
         final address = order['addresses'] as Map<String, dynamic>;
         addressText = address['address_text'] as String?;
+        addressNotes = address['notes'] as String?;
         addressLatitude = address['latitude'] != null
             ? (address['latitude'] as num).toDouble()
             : null;
@@ -72,8 +90,12 @@ class CourierTaskModel {
           ? DateTime.parse(json['completed_at'] as String)
           : null,
       orderCode: orderCode,
+      orderType: orderType,
+      totalAmount: totalAmount,
       customerName: customerName,
+      customerPhone: customerPhone,
       addressText: addressText,
+      addressNotes: addressNotes,
       addressLatitude: addressLatitude,
       addressLongitude: addressLongitude,
       customerNotes: customerNotes,

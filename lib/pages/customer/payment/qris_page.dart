@@ -156,8 +156,9 @@ class _QrisPageState extends State<QrisPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Pembayaran QRIS'),
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black87,
+        elevation: 0.5,
       ),
       backgroundColor: AppColors.background,
       body: _isLoading

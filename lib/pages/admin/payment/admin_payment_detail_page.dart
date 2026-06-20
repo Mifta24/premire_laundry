@@ -19,6 +19,8 @@ class AdminPaymentDetailPage extends StatefulWidget {
 
 class _AdminPaymentDetailPageState extends State<AdminPaymentDetailPage> {
   PaymentModel? _payment;
+  String? _orderCode;
+  String? _customerName;
   bool _isLoading = true;
 
   @override
@@ -29,10 +31,14 @@ class _AdminPaymentDetailPageState extends State<AdminPaymentDetailPage> {
 
   Future<void> _load() async {
     setState(() => _isLoading = true);
-    final payment =
-        await context.read<AdminProvider>().getPaymentById(widget.paymentId);
+    final provider = context.read<AdminProvider>();
+    final payment = await provider.getPaymentById(widget.paymentId);
+    final order =
+        payment != null ? await provider.getOrderById(payment.orderId) : null;
     setState(() {
       _payment = payment;
+      _orderCode = order?.orderCode;
+      _customerName = order?.customerName;
       _isLoading = false;
     });
   }
@@ -90,8 +96,9 @@ class _AdminPaymentDetailPageState extends State<AdminPaymentDetailPage> {
       return Scaffold(
         appBar: AppBar(
           title: const Text('Detail Pembayaran'),
-          backgroundColor: AppColors.primary,
-          foregroundColor: Colors.white,
+          backgroundColor: Colors.white,
+          foregroundColor: Colors.black87,
+          elevation: 0.5,
         ),
         body: const Center(child: CircularProgressIndicator()),
       );
@@ -101,8 +108,9 @@ class _AdminPaymentDetailPageState extends State<AdminPaymentDetailPage> {
       return Scaffold(
         appBar: AppBar(
           title: const Text('Detail Pembayaran'),
-          backgroundColor: AppColors.primary,
-          foregroundColor: Colors.white,
+          backgroundColor: Colors.white,
+          foregroundColor: Colors.black87,
+          elevation: 0.5,
         ),
         body: const Center(child: Text('Pembayaran tidak ditemukan')),
       );
@@ -115,8 +123,9 @@ class _AdminPaymentDetailPageState extends State<AdminPaymentDetailPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Detail Pembayaran'),
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black87,
+        elevation: 0.5,
       ),
       backgroundColor: AppColors.background,
       body: SingleChildScrollView(
@@ -136,8 +145,10 @@ class _AdminPaymentDetailPageState extends State<AdminPaymentDetailPage> {
                         style: TextStyle(
                             fontSize: 15, fontWeight: FontWeight.bold)),
                     const Divider(height: 16),
-                    _row('Order ID',
-                        p.orderId.substring(0, 8).toUpperCase()),
+                    _row('Pesanan',
+                        _orderCode ?? p.orderId.substring(0, 8).toUpperCase()),
+                    if (_customerName != null)
+                      _row('Pelanggan', _customerName!),
                     _row('Metode',
                         p.method == 'manual_qris'
                             ? 'QRIS Manual'

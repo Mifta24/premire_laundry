@@ -89,7 +89,7 @@ Kurir menggunakan aplikasi untuk melihat tugas jemput/antar dan mengupdate statu
 ### Tujuan
 Admin mengelola order, pembayaran, layanan, harga, berat laundry kiloan, dan assignment kurir.
 
-### Fitur Minimal
+### Fitur
 
 - Login
 - Melihat semua order

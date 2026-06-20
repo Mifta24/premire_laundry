@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
+import '../core/constants/supabase_keys.dart';
 import '../models/order_model.dart';
 import '../models/payment_model.dart';
 import '../models/laundry_service_model.dart';
@@ -14,20 +15,78 @@ class AdminProvider extends ChangeNotifier {
 
   List<OrderModel> _allOrders = [];
   List<PaymentModel> _pendingPayments = [];
+  List<PaymentModel> _paidPayments = [];
   List<LaundryServiceModel> _services = [];
   List<ProfileModel> _couriers = [];
   List<DeliveryFeeModel> _deliveryFees = [];
+  List<CourierTaskModel> _activeCourierTasks = [];
   bool _isLoading = false;
   String? _error;
   RealtimeChannel? _channel;
 
   List<OrderModel> get allOrders => _allOrders;
   List<PaymentModel> get pendingPayments => _pendingPayments;
+  List<PaymentModel> get paidPayments => _paidPayments;
   List<LaundryServiceModel> get services => _services;
   List<ProfileModel> get couriers => _couriers;
   List<DeliveryFeeModel> get deliveryFees => _deliveryFees;
+  List<CourierTaskModel> get activeCourierTasks => _activeCourierTasks;
   bool get isLoading => _isLoading;
   String? get error => _error;
+
+  double revenueWithinDays(int days) {
+    final cutoff = DateTime.now().subtract(Duration(days: days));
+    return _paidPayments
+        .where((p) => p.paidAt != null && p.paidAt!.isAfter(cutoff))
+        .fold<double>(0, (sum, p) => sum + p.amount);
+  }
+
+  double get todayRevenue {
+    final now = DateTime.now();
+    return _paidPayments
+        .where((p) =>
+            p.paidAt != null &&
+            p.paidAt!.year == now.year &&
+            p.paidAt!.month == now.month &&
+            p.paidAt!.day == now.day)
+        .fold<double>(0, (sum, p) => sum + p.amount);
+  }
+
+  double get monthRevenue {
+    final now = DateTime.now();
+    return _paidPayments
+        .where((p) =>
+            p.paidAt != null &&
+            p.paidAt!.year == now.year &&
+            p.paidAt!.month == now.month)
+        .fold<double>(0, (sum, p) => sum + p.amount);
+  }
+
+  /// Total pendapatan per hari untuk 7 hari terakhir (index 0 = 6 hari lalu, index 6 = hari ini).
+  List<double> get last7DaysRevenue {
+    final now = DateTime.now();
+    final days = List.generate(7, (i) => now.subtract(Duration(days: 6 - i)));
+    return days.map((day) {
+      return _paidPayments
+          .where((p) =>
+              p.paidAt != null &&
+              p.paidAt!.year == day.year &&
+              p.paidAt!.month == day.month &&
+              p.paidAt!.day == day.day)
+          .fold<double>(0, (sum, p) => sum + p.amount);
+    }).toList();
+  }
+
+  int activeTaskCountFor(String courierId) {
+    return _activeCourierTasks
+        .where((t) =>
+            t.courierId == courierId &&
+            t.status != 'picked_up' &&
+            t.status != 'delivered' &&
+            t.status != 'completed' &&
+            t.status != 'cancelled')
+        .length;
+  }
 
   List<T> _uniqueBy<T>(Iterable<T> items, String Function(T item) keyOf) {
     final seen = <String>{};
@@ -35,6 +94,48 @@ class AdminProvider extends ChangeNotifier {
       for (final item in items)
         if (seen.add(keyOf(item))) item,
     ];
+  }
+
+  Future<Map<String, Map<String, String?>>> _fetchCustomerProfiles(
+    Iterable<String> customerIds,
+  ) async {
+    final ids = customerIds.toSet().toList();
+    if (ids.isEmpty) return {};
+    final data = await _supabase
+        .from('profiles')
+        .select('user_id, name, phone')
+        .inFilter('user_id', ids);
+    final result = <String, Map<String, String?>>{};
+    for (final p in data as List<dynamic>) {
+      final uid = p['user_id'] as String?;
+      if (uid != null) {
+        result[uid] = {
+          'name': p['name'] as String?,
+          'phone': p['phone'] as String?,
+        };
+      }
+    }
+    return result;
+  }
+
+  Future<List<Map<String, dynamic>>> _enrichOrdersWithCustomer(
+    List<dynamic> rawOrders,
+  ) async {
+    final customerIds = rawOrders
+        .map((o) => (o as Map<String, dynamic>)['customer_id'] as String?)
+        .whereType<String>();
+    final profiles = await _fetchCustomerProfiles(customerIds);
+
+    return rawOrders.map((o) {
+      final row = Map<String, dynamic>.from(o as Map<String, dynamic>);
+      final customerId = row['customer_id'] as String?;
+      final profile = profiles[customerId];
+      if (profile != null) {
+        row['customer_name'] = profile['name'];
+        row['customer_phone'] = profile['phone'];
+      }
+      return row;
+    }).toList();
   }
 
   void _setLoading(bool value) {
@@ -53,12 +154,11 @@ class AdminProvider extends ChangeNotifier {
     try {
       final data = await _supabase
           .from('orders')
-          .select('*, order_items(*), payments(*)')
+          .select('*, order_items(*), payments(*), addresses(address_text)')
           .order('created_at', ascending: false);
+      final enriched = await _enrichOrdersWithCustomer(data as List<dynamic>);
       _allOrders = _uniqueBy(
-        (data as List<dynamic>).map(
-          (o) => OrderModel.fromJson(o as Map<String, dynamic>),
-        ),
+        enriched.map((o) => OrderModel.fromJson(o)),
         (order) => order.id,
       );
       notifyListeners();
@@ -89,6 +189,49 @@ class AdminProvider extends ChangeNotifier {
       _setError(e.toString());
     } finally {
       _setLoading(false);
+    }
+  }
+
+  Future<void> loadPaidPayments() async {
+    _setLoading(true);
+    _setError(null);
+    try {
+      final cutoff = DateTime.now().subtract(const Duration(days: 60));
+      final data = await _supabase
+          .from('payments')
+          .select()
+          .eq('status', 'paid')
+          .gte('paid_at', cutoff.toIso8601String())
+          .order('paid_at', ascending: false);
+      _paidPayments = _uniqueBy(
+        (data as List<dynamic>).map(
+          (p) => PaymentModel.fromJson(p as Map<String, dynamic>),
+        ),
+        (payment) => payment.id,
+      );
+      notifyListeners();
+    } catch (e) {
+      _setError(e.toString());
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  Future<void> loadActiveCourierTasks() async {
+    try {
+      final data = await _supabase
+          .from('courier_tasks')
+          .select()
+          .not('status', 'in', '(picked_up,delivered,completed,cancelled)');
+      _activeCourierTasks = _uniqueBy(
+        (data as List<dynamic>).map(
+          (t) => CourierTaskModel.fromJson(t as Map<String, dynamic>),
+        ),
+        (task) => task.id,
+      );
+      notifyListeners();
+    } catch (e) {
+      _setError(e.toString());
     }
   }
 
@@ -240,6 +383,105 @@ class AdminProvider extends ChangeNotifier {
     } catch (e) {
       _setError(e.toString());
       return [];
+    }
+  }
+
+  Future<List<CourierTaskModel>> getCourierTaskHistory(String courierId) async {
+    try {
+      final data = await _supabase
+          .from('courier_tasks')
+          .select('*, orders(order_code, order_type)')
+          .eq('courier_id', courierId)
+          .order('assigned_at', ascending: false);
+      return _uniqueBy(
+        (data as List<dynamic>).map(
+          (t) => CourierTaskModel.fromJson(t as Map<String, dynamic>),
+        ),
+        (task) => task.id,
+      );
+    } catch (e) {
+      _setError(e.toString());
+      return [];
+    }
+  }
+
+  Future<bool> updateCourierProfile(
+    String courierUserId,
+    String name,
+    String phone,
+  ) async {
+    _setLoading(true);
+    _setError(null);
+    try {
+      await _supabase
+          .from('profiles')
+          .update({'name': name, 'phone': phone})
+          .eq('user_id', courierUserId);
+      await loadCouriers();
+      return true;
+    } catch (e) {
+      _setError(e.toString());
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  Future<bool> updateCourierAvailability(
+    String courierUserId,
+    bool isAvailable,
+  ) async {
+    try {
+      await _supabase
+          .from('profiles')
+          .update({'is_available': isAvailable})
+          .eq('user_id', courierUserId);
+      await loadCouriers();
+      return true;
+    } catch (e) {
+      _setError(e.toString());
+      return false;
+    }
+  }
+
+  /// Buat akun kurir baru tanpa mengganggu sesi admin yang sedang login.
+  /// Memakai SupabaseClient terpisah (anon key) khusus untuk signUp, karena
+  /// signUp via client SDK otomatis mengautentikasi sesi tersebut sebagai
+  /// user baru - kalau dipanggil lewat client global, admin akan ter-logout
+  /// dan tergantikan sesi kurir baru.
+  Future<bool> createCourierAccount({
+    required String email,
+    required String password,
+    required String name,
+    required String phone,
+  }) async {
+    _setLoading(true);
+    _setError(null);
+    final tempClient = SupabaseClient(
+      SupabaseKeys.supabaseUrl,
+      SupabaseKeys.supabaseAnonKey,
+    );
+    try {
+      final response = await tempClient.auth.signUp(
+        email: email,
+        password: password,
+        data: {'name': name, 'phone': phone, 'role': 'courier'},
+      );
+      if (response.user == null) {
+        _setError('Gagal membuat akun kurir');
+        return false;
+      }
+      await loadCouriers();
+      return true;
+    } on AuthException catch (e) {
+      _setError(e.message);
+      return false;
+    } catch (e) {
+      _setError('Terjadi kesalahan. Silakan coba lagi.');
+      return false;
+    } finally {
+      await tempClient.dispose();
+      _setLoading(false);
     }
   }
 
@@ -511,10 +753,11 @@ class AdminProvider extends ChangeNotifier {
     try {
       final data = await _supabase
           .from('orders')
-          .select('*, order_items(*), payments(*)')
+          .select('*, order_items(*), payments(*), addresses(address_text)')
           .eq('id', orderId)
           .single();
-      return OrderModel.fromJson(data);
+      final enriched = await _enrichOrdersWithCustomer([data]);
+      return OrderModel.fromJson(enriched.first);
     } catch (e) {
       _setError(e.toString());
       return null;
@@ -563,7 +806,16 @@ class AdminProvider extends ChangeNotifier {
           event: PostgresChangeEvent.all,
           schema: 'public',
           table: 'payments',
-          callback: (_) => loadPendingPayments(),
+          callback: (_) {
+            loadPendingPayments();
+            loadPaidPayments();
+          },
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'courier_tasks',
+          callback: (_) => loadActiveCourierTasks(),
         )
         .subscribe();
   }

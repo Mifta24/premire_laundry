@@ -1,13 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/currency_formatter.dart';
+import '../../../core/utils/date_formatter.dart';
 import '../../../models/courier_task_model.dart';
 import '../../../models/laundry_service_model.dart';
 import '../../../models/order_model.dart';
 import '../../../providers/admin_provider.dart';
 import '../../../widgets/app_button.dart';
 import '../../../widgets/status_badge.dart';
+
+const _stepIcons = [
+  Icons.shopping_bag_outlined,
+  Icons.local_laundry_service_outlined,
+  Icons.iron_outlined,
+  Icons.inventory_2_outlined,
+  Icons.check_circle_outline,
+];
+const _stepLabels = ['Jemput', 'Dicuci', 'Disetrika', 'Siap Diantar', 'Selesai'];
 
 class AdminOrderDetailPage extends StatefulWidget {
   final String orderId;
@@ -60,6 +72,30 @@ class _AdminOrderDetailPageState extends State<AdminOrderDetailPage> {
         return const [];
       default:
         return const [];
+    }
+  }
+
+  int _milestoneIndex(String status) {
+    switch (status) {
+      case 'created':
+      case 'waiting_pickup':
+        return 0;
+      case 'picked_up':
+      case 'received_by_store':
+      case 'waiting_weight_input':
+      case 'waiting_payment':
+      case 'paid':
+      case 'washing':
+        return 1;
+      case 'ironing':
+        return 2;
+      case 'ready_to_deliver':
+      case 'out_for_delivery':
+        return 3;
+      case 'completed':
+        return 4;
+      default:
+        return 0;
     }
   }
 
@@ -222,6 +258,47 @@ class _AdminOrderDetailPageState extends State<AdminOrderDetailPage> {
     }
   }
 
+  void _showUpdateStatusSheet(List<String> nextStatuses, bool isLoading) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Perbarui Status',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 16),
+            if (nextStatuses.isEmpty)
+              const Text('Tidak ada status lanjutan',
+                  style: TextStyle(color: Colors.grey))
+            else
+              ...nextStatuses.map(
+                (status) => Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: AppButton(
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      _updateStatus(status);
+                    },
+                    label: StatusBadge.labelFor(status),
+                    isLoading: isLoading,
+                    color:
+                        status == 'cancelled' ? AppColors.error : AppColors.secondary,
+                    isOutlined: status == 'cancelled',
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _assignCourier() async {
     if (_selectedCourierId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -305,14 +382,22 @@ class _AdminOrderDetailPageState extends State<AdminOrderDetailPage> {
     }
   }
 
+  Future<void> _callCustomer(String phone) async {
+    final uri = Uri.parse('tel:$phone');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
       return Scaffold(
         appBar: AppBar(
           title: const Text('Detail Pesanan'),
-          backgroundColor: AppColors.primary,
-          foregroundColor: Colors.white,
+          backgroundColor: Colors.white,
+          foregroundColor: Colors.black87,
+          elevation: 0.5,
         ),
         body: const Center(child: CircularProgressIndicator()),
       );
@@ -322,8 +407,9 @@ class _AdminOrderDetailPageState extends State<AdminOrderDetailPage> {
       return Scaffold(
         appBar: AppBar(
           title: const Text('Detail Pesanan'),
-          backgroundColor: AppColors.primary,
-          foregroundColor: Colors.white,
+          backgroundColor: Colors.white,
+          foregroundColor: Colors.black87,
+          elevation: 0.5,
         ),
         body: const Center(child: Text('Pesanan tidak ditemukan')),
       );
@@ -347,55 +433,169 @@ class _AdminOrderDetailPageState extends State<AdminOrderDetailPage> {
     final availableTaskTypes = _availableTaskTypesFor(order);
     final canAssignCourier =
         availableTaskTypes.isNotEmpty && selectedCourierId != null;
+    final cancelled = order.status == 'cancelled';
+    final milestone = _milestoneIndex(order.status);
+    final canValidatePayment = order.payment?.status == 'waiting_verification';
 
     return Scaffold(
       appBar: AppBar(
         title: Text(order.orderCode),
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black87,
+        elevation: 0.5,
         actions: [
           IconButton(icon: const Icon(Icons.refresh), onPressed: _loadData),
         ],
       ),
       backgroundColor: AppColors.background,
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 90),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Order info
-            _sectionCard('Informasi Pesanan', [
-              _row('Kode', order.orderCode),
-              _row(
-                'Tipe',
-                order.orderType == 'kiloan'
-                    ? 'Kiloan'
-                    : order.orderType == 'satuan'
-                    ? 'Satuan'
-                    : 'Campuran',
+            // Header
+            Card(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(order.orderCode,
+                              style: const TextStyle(
+                                  fontSize: 17, fontWeight: FontWeight.bold)),
+                        ),
+                        StatusBadge(status: order.status),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      formatTanggalIndo(order.createdAt),
+                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                    ),
+                  ],
+                ),
               ),
-              _row(
-                'Tanggal',
-                '${order.createdAt.day}/${order.createdAt.month}/${order.createdAt.year}',
+            ),
+            const SizedBox(height: 12),
+
+            // Status stepper
+            if (cancelled)
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.error.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.cancel_outlined, color: AppColors.error),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Text('Pesanan ini telah dibatalkan.',
+                          style: TextStyle(color: AppColors.error)),
+                    ),
+                  ],
+                ),
+              )
+            else
+              Card(
+                shape:
+                    RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Status Pesanan',
+                          style:
+                              TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: List.generate(_stepIcons.length * 2 - 1, (i) {
+                          if (i.isOdd) {
+                            final lineDone = (i ~/ 2) < milestone;
+                            return Expanded(
+                              child: Container(
+                                height: 2,
+                                color:
+                                    lineDone ? AppColors.primary : Colors.grey[300],
+                              ),
+                            );
+                          }
+                          final step = i ~/ 2;
+                          final done = step <= milestone;
+                          return Column(
+                            children: [
+                              Container(
+                                width: 28,
+                                height: 28,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: done ? AppColors.primary : Colors.grey[200],
+                                ),
+                                child: Icon(_stepIcons[step],
+                                    size: 14,
+                                    color: done ? Colors.white : Colors.grey[500]),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(_stepLabels[step],
+                                  style: TextStyle(
+                                      fontSize: 9,
+                                      color: done
+                                          ? AppColors.primary
+                                          : Colors.grey[500])),
+                            ],
+                          );
+                        }),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-              if (order.notes != null && order.notes!.isNotEmpty)
-                _row('Catatan', order.notes!),
+            const SizedBox(height: 12),
+
+            // Informasi Pelanggan
+            _sectionCard('Informasi Pelanggan', [
               Row(
                 children: [
-                  const SizedBox(
-                    width: 110,
-                    child: Text('Status', style: TextStyle(color: Colors.grey)),
+                  const Icon(Icons.person, size: 18, color: AppColors.primary),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(order.customerName ?? '-',
+                        style: const TextStyle(fontWeight: FontWeight.w500)),
                   ),
-                  StatusBadge(status: order.status),
+                  if (order.customerPhone != null && order.customerPhone!.isNotEmpty)
+                    IconButton(
+                      icon: const Icon(Icons.phone, color: AppColors.success),
+                      onPressed: () => _callCustomer(order.customerPhone!),
+                    ),
                 ],
               ),
             ]),
+            const SizedBox(height: 12),
+
+            if (order.addressText != null && order.addressText!.isNotEmpty) ...[
+              _sectionCard('Alamat Jemput', [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.location_on, size: 18, color: AppColors.primary),
+                    const SizedBox(width: 10),
+                    Expanded(child: Text(order.addressText!)),
+                  ],
+                ),
+              ]),
+              const SizedBox(height: 12),
+            ],
 
             // Items
             if (order.orderItems.isNotEmpty) ...[
-              const SizedBox(height: 12),
               _sectionCard(
-                'Item Pesanan',
+                'Layanan',
                 order.orderItems.map((item) {
                   return ListTile(
                     contentPadding: EdgeInsets.zero,
@@ -412,11 +612,16 @@ class _AdminOrderDetailPageState extends State<AdminOrderDetailPage> {
                   );
                 }).toList(),
               ),
+              const SizedBox(height: 12),
+            ],
+
+            if (order.notes != null && order.notes!.isNotEmpty) ...[
+              _sectionCard('Catatan Pakaian', [Text(order.notes!)]),
+              const SizedBox(height: 12),
             ],
 
             // Payment summary
-            const SizedBox(height: 12),
-            _sectionCard('Pembayaran', [
+            _sectionCard('Ringkasan Biaya', [
               _row('Subtotal', formatRupiah(order.subtotal)),
               _row('Ongkir', formatRupiah(order.deliveryFee)),
               if (order.discountAmount > 0)
@@ -525,7 +730,7 @@ class _AdminOrderDetailPageState extends State<AdminOrderDetailPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'Tugaskan Kurir',
+                      'Assign Kurir',
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.bold,
@@ -620,54 +825,10 @@ class _AdminOrderDetailPageState extends State<AdminOrderDetailPage> {
                       const SizedBox(height: 12),
                       AppButton(
                         onPressed: canAssignCourier ? _assignCourier : null,
-                        label: 'Tugaskan Kurir',
+                        label: 'Assign Kurir',
                         isLoading: provider.isLoading,
                       ),
                     ],
-                  ],
-                ),
-              ),
-            ),
-
-            // Update status
-            const SizedBox(height: 12),
-            Card(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Perbarui Status',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    if (nextStatuses.isEmpty)
-                      const Text(
-                        'Tidak ada status lanjutan',
-                        style: TextStyle(color: Colors.grey),
-                      )
-                    else
-                      ...nextStatuses.map(
-                        (status) => Padding(
-                          padding: const EdgeInsets.only(bottom: 10),
-                          child: AppButton(
-                            onPressed: () => _updateStatus(status),
-                            label: StatusBadge.labelFor(status),
-                            isLoading: provider.isLoading,
-                            color: status == 'cancelled'
-                                ? AppColors.error
-                                : AppColors.secondary,
-                            isOutlined: status == 'cancelled',
-                          ),
-                        ),
-                      ),
                   ],
                 ),
               ),
@@ -705,7 +866,39 @@ class _AdminOrderDetailPageState extends State<AdminOrderDetailPage> {
                 }).toList(),
               ),
             ],
-            const SizedBox(height: 20),
+          ],
+        ),
+      ),
+      bottomNavigationBar: Container(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 8,
+              offset: const Offset(0, -2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: AppButton(
+                onPressed: () => _showUpdateStatusSheet(nextStatuses, provider.isLoading),
+                label: 'Update Status',
+                isOutlined: true,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: AppButton(
+                onPressed: canValidatePayment
+                    ? () => context.push('/admin/payment/${order.payment!.id}')
+                    : null,
+                label: 'Validasi Pembayaran',
+              ),
+            ),
           ],
         ),
       ),

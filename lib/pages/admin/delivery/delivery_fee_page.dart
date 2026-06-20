@@ -156,8 +156,9 @@ class _DeliveryFeePageState extends State<DeliveryFeePage> {
       backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text('Ongkos Kirim'),
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black87,
+        elevation: 0.5,
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showDialog(),

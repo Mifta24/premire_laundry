@@ -171,4 +171,40 @@ class NotificationService {
   Future<RemoteMessage?> getInitialMessage() async {
     return await _messaging.getInitialMessage();
   }
+
+  // Status aktif/nonaktif notifikasi untuk device ini (berdasarkan token saat ini)
+  Future<bool> isNotificationsEnabled(String userId) async {
+    try {
+      final token = await _messaging.getToken();
+      if (token == null) return true;
+      final row = await Supabase.instance.client
+          .from('user_devices')
+          .select('is_active')
+          .eq('user_id', userId)
+          .eq('fcm_token', token)
+          .maybeSingle();
+      return row?['is_active'] as bool? ?? true;
+    } catch (e) {
+      debugPrint('Error reading notification preference: $e');
+      return true;
+    }
+  }
+
+  // Aktif/nonaktifkan notifikasi push untuk device ini.
+  // Mengubah is_active pada user_devices, dipakai send-notification edge
+  // function untuk menyaring device tujuan.
+  Future<void> setNotificationsEnabled(String userId, bool enabled) async {
+    try {
+      final token = await _messaging.getToken();
+      if (token == null) return;
+      await Supabase.instance.client.from('user_devices').upsert({
+        'user_id': userId,
+        'fcm_token': token,
+        'platform': Platform.isAndroid ? 'android' : 'ios',
+        'is_active': enabled,
+      }, onConflict: 'user_id,fcm_token');
+    } catch (e) {
+      debugPrint('Error updating notification preference: $e');
+    }
+  }
 }

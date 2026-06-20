@@ -136,8 +136,9 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
       backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text('Pengaturan Toko'),
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black87,
+        elevation: 0.5,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),

@@ -4,6 +4,8 @@ class ProfileModel {
   final String name;
   final String phone;
   final String role;
+  final bool isAvailable;
+  final String? avatarUrl;
   final DateTime createdAt;
 
   ProfileModel({
@@ -12,6 +14,8 @@ class ProfileModel {
     required this.name,
     required this.phone,
     required this.role,
+    this.isAvailable = true,
+    this.avatarUrl,
     required this.createdAt,
   });
 
@@ -22,6 +26,8 @@ class ProfileModel {
       name: json['name'] as String? ?? '',
       phone: json['phone'] as String? ?? '',
       role: json['role'] as String? ?? 'customer',
+      isAvailable: json['is_available'] as bool? ?? true,
+      avatarUrl: json['avatar_url'] as String?,
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'] as String)
           : DateTime.now(),
@@ -35,6 +41,8 @@ class ProfileModel {
       'name': name,
       'phone': phone,
       'role': role,
+      'is_available': isAvailable,
+      'avatar_url': avatarUrl,
       'created_at': createdAt.toIso8601String(),
     };
   }
@@ -45,6 +53,8 @@ class ProfileModel {
     String? name,
     String? phone,
     String? role,
+    bool? isAvailable,
+    String? avatarUrl,
     DateTime? createdAt,
   }) {
     return ProfileModel(
@@ -53,6 +63,8 @@ class ProfileModel {
       name: name ?? this.name,
       phone: phone ?? this.phone,
       role: role ?? this.role,
+      isAvailable: isAvailable ?? this.isAvailable,
+      avatarUrl: avatarUrl ?? this.avatarUrl,
       createdAt: createdAt ?? this.createdAt,
     );
   }

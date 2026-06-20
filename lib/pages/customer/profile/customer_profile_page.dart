@@ -2,66 +2,59 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/services/notification_service.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/customer_provider.dart';
-import '../../../widgets/app_button.dart';
+import '../../../widgets/change_password_sheet.dart';
+import '../../../widgets/edit_profile_sheet.dart';
+import '../../../widgets/editable_avatar.dart';
 
 class CustomerProfilePage extends StatefulWidget {
-  const CustomerProfilePage({super.key});
+  final void Function(int index)? onNavigateTab;
+  const CustomerProfilePage({super.key, this.onNavigateTab});
 
   @override
   State<CustomerProfilePage> createState() => _CustomerProfilePageState();
 }
 
 class _CustomerProfilePageState extends State<CustomerProfilePage> {
-  bool _isEditing = false;
-  late TextEditingController _nameController;
-  late TextEditingController _phoneController;
+  bool? _notificationsEnabled;
+  bool _isSavingNotifications = false;
 
   @override
   void initState() {
     super.initState();
-    final profile = context.read<AuthProvider>().profile;
-    _nameController = TextEditingController(text: profile?.name ?? '');
-    _phoneController = TextEditingController(text: profile?.phone ?? '');
-    WidgetsBinding.instance.addPostFrameCallback((_) => _loadLoyalty());
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadData());
   }
 
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _phoneController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _loadLoyalty() async {
+  Future<void> _loadData() async {
     final userId = context.read<AuthProvider>().currentUser?.id;
     if (userId != null) {
-      await context.read<CustomerProvider>().loadLoyalty(userId);
+      final provider = context.read<CustomerProvider>();
+      await Future.wait([
+        provider.loadLoyalty(userId),
+        if (provider.orders.isEmpty) provider.loadOrders(userId),
+        _loadNotificationPref(userId),
+      ]);
     }
   }
 
-  Future<void> _saveProfile() async {
-    final authProvider = context.read<AuthProvider>();
-    final ok = await authProvider.updateProfile(
-      _nameController.text.trim(),
-      _phoneController.text.trim(),
-    );
+  Future<void> _loadNotificationPref(String userId) async {
+    final enabled = await NotificationService().isNotificationsEnabled(userId);
     if (!mounted) return;
-    if (ok) {
-      setState(() => _isEditing = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Profil berhasil diperbarui'),
-            backgroundColor: AppColors.success),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content: Text(authProvider.error ?? 'Gagal memperbarui profil'),
-            backgroundColor: AppColors.error),
-      );
-    }
+    setState(() => _notificationsEnabled = enabled);
+  }
+
+  Future<void> _toggleNotifications(bool value) async {
+    final userId = context.read<AuthProvider>().currentUser?.id;
+    if (userId == null) return;
+    setState(() {
+      _isSavingNotifications = true;
+      _notificationsEnabled = value;
+    });
+    await NotificationService().setNotificationsEnabled(userId, value);
+    if (!mounted) return;
+    setState(() => _isSavingNotifications = false);
   }
 
   Future<void> _signOut() async {
@@ -72,12 +65,13 @@ class _CustomerProfilePageState extends State<CustomerProfilePage> {
         content: const Text('Apakah Anda yakin ingin keluar?'),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Batal')),
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Batal'),
+          ),
           TextButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Keluar',
-                  style: TextStyle(color: AppColors.error))),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Keluar', style: TextStyle(color: AppColors.error)),
+          ),
         ],
       ),
     );
@@ -92,185 +86,219 @@ class _CustomerProfilePageState extends State<CustomerProfilePage> {
     final authProvider = context.watch<AuthProvider>();
     final customerProvider = context.watch<CustomerProvider>();
     final profile = authProvider.profile;
-    final loyalty = customerProvider.loyaltyPoints;
-    final cycleCount = loyalty?.currentCycleCount ?? 0;
+    final loyaltyPoints = customerProvider.loyaltyPoints?.totalCompletedOrders ?? 0;
+    final totalOrders = customerProvider.orders.length;
+    final completedOrders =
+        customerProvider.orders.where((o) => o.status == 'completed').length;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          // Avatar
-          const CircleAvatar(
-            radius: 48,
-            backgroundColor: AppColors.primary,
-            child: Icon(Icons.person, size: 56, color: Colors.white),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            profile?.name ?? '-',
-            style: const TextStyle(
-                fontSize: 20, fontWeight: FontWeight.bold),
-          ),
-          Text(
-            authProvider.currentUser?.email ?? '',
-            style: TextStyle(color: Colors.grey[600]),
-          ),
-          const SizedBox(height: 24),
-
-          // Loyalty card
+          // Profile card
           Card(
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12)),
-            color: AppColors.primary,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
             child: Padding(
               padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  const Row(
-                    children: [
-                      Icon(Icons.star, color: Colors.amber, size: 20),
-                      SizedBox(width: 8),
-                      Text('Program Loyalitas',
-                          style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 15)),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  LinearProgressIndicator(
-                    value: cycleCount / 10.0,
-                    backgroundColor: Colors.white.withValues(alpha: 0.3),
-                    valueColor:
-                        const AlwaysStoppedAnimation<Color>(Colors.amber),
-                    minHeight: 8,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text('$cycleCount / 10 pesanan',
-                          style: const TextStyle(
-                              color: Colors.white, fontSize: 13)),
-                      Text(
-                        cycleCount >= 10
-                            ? 'Voucher tersedia!'
-                            : '${10 - cycleCount} lagi untuk voucher',
-                        style: const TextStyle(
-                            color: Colors.amber,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // Profile form
-          Card(
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12)),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
+              child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text('Informasi Akun',
-                          style: TextStyle(
-                              fontSize: 15, fontWeight: FontWeight.bold)),
-                      if (!_isEditing)
-                        TextButton.icon(
-                          onPressed: () => setState(() => _isEditing = true),
-                          icon: const Icon(Icons.edit, size: 16),
-                          label: const Text('Edit'),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: _nameController,
-                    enabled: _isEditing,
-                    decoration: InputDecoration(
-                      labelText: 'Nama',
-                      prefixIcon: const Icon(Icons.person_outlined),
-                      border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10)),
-                      filled: true,
-                      fillColor: _isEditing ? Colors.white : Colors.grey[50],
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: _phoneController,
-                    enabled: _isEditing,
-                    keyboardType: TextInputType.phone,
-                    decoration: InputDecoration(
-                      labelText: 'No. HP',
-                      prefixIcon: const Icon(Icons.phone_outlined),
-                      border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10)),
-                      filled: true,
-                      fillColor: _isEditing ? Colors.white : Colors.grey[50],
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    initialValue: authProvider.currentUser?.email ?? '',
-                    enabled: false,
-                    decoration: InputDecoration(
-                      labelText: 'Email',
-                      prefixIcon: const Icon(Icons.email_outlined),
-                      border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10)),
-                      filled: true,
-                      fillColor: Colors.grey[50],
-                    ),
-                  ),
-                  if (_isEditing) ...[
-                    const SizedBox(height: 16),
-                    Row(
+                  EditableAvatar(avatarUrl: profile?.avatarUrl, radius: 32),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(
-                          child: AppButton(
-                            onPressed: () => setState(() => _isEditing = false),
-                            label: 'Batal',
-                            isOutlined: true,
-                          ),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                profile?.name ?? '-',
+                                style: const TextStyle(
+                                    fontSize: 16, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                            GestureDetector(
+                              onTap: () => showEditProfileSheet(context),
+                              child: const Text(
+                                'Edit Profil',
+                                style: TextStyle(
+                                  color: AppColors.primary,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: AppButton(
-                            onPressed: _saveProfile,
-                            label: 'Simpan',
-                            isLoading: authProvider.isLoading,
+                        const SizedBox(height: 4),
+                        Text(
+                          authProvider.currentUser?.email ?? '',
+                          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                        ),
+                        if (profile != null && profile.phone.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 2),
+                            child: Row(
+                              children: [
+                                Icon(Icons.phone, size: 13, color: Colors.grey[600]),
+                                const SizedBox(width: 4),
+                                Text(
+                                  profile.phone,
+                                  style: TextStyle(
+                                      fontSize: 12, color: Colors.grey[600]),
+                                ),
+                              ],
+                            ),
+                          ),
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            profile?.role == 'customer'
+                                ? 'Customer'
+                                : (profile?.role ?? '-'),
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.primary,
+                            ),
                           ),
                         ),
                       ],
                     ),
-                  ],
+                  ),
                 ],
               ),
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
 
-          // Keluar button
-          AppButton(
-            onPressed: _signOut,
-            label: 'Keluar',
-            isOutlined: true,
-            color: AppColors.error,
+          // Stats row
+          Card(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              child: Row(
+                children: [
+                  Expanded(child: _statColumn('$totalOrders', 'Total Order')),
+                  const SizedBox(height: 36, child: VerticalDivider()),
+                  Expanded(child: _statColumn('$completedOrders', 'Selesai')),
+                  const SizedBox(height: 36, child: VerticalDivider()),
+                  Expanded(
+                    child: _statColumn('$loyaltyPoints', 'Poin Loyalty',
+                        icon: Icons.star, iconColor: Colors.amber),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              'Pengaturan',
+              style: TextStyle(
+                  fontSize: 14, fontWeight: FontWeight.bold, color: Colors.grey[800]),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Card(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            child: SwitchListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+              secondary: const Icon(Icons.notifications_outlined,
+                  color: AppColors.primary),
+              title: const Text('Notifikasi',
+                  style: TextStyle(fontWeight: FontWeight.w600)),
+              subtitle: Text(
+                'Dapatkan notifikasi status pesanan & pembayaran',
+                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+              ),
+              value: _notificationsEnabled ?? true,
+              onChanged: _isSavingNotifications || _notificationsEnabled == null
+                  ? null
+                  : _toggleNotifications,
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              'Menu Akun',
+              style: TextStyle(
+                  fontSize: 14, fontWeight: FontWeight.bold, color: Colors.grey[800]),
+            ),
+          ),
+          const SizedBox(height: 8),
+
+          Card(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            child: Column(
+              children: [
+                _menuTile(Icons.location_on_outlined, 'Alamat Saya',
+                    () => context.push('/customer/address')),
+                const Divider(height: 1),
+                _menuTile(Icons.card_giftcard_outlined, 'Voucher Saya',
+                    () => widget.onNavigateTab?.call(2)),
+                const Divider(height: 1),
+                _menuTile(Icons.receipt_long_outlined, 'Riwayat Transaksi',
+                    () => widget.onNavigateTab?.call(1)),
+                const Divider(height: 1),
+                _menuTile(Icons.lock_outline, 'Ubah Password',
+                    () => showChangePasswordSheet(context)),
+                const Divider(height: 1),
+                _menuTile(Icons.help_outline, 'Bantuan & FAQ',
+                    () => context.push('/customer/help')),
+                const Divider(height: 1),
+                _menuTile(Icons.info_outline, 'Tentang Premier Laundry',
+                    () => context.push('/customer/about')),
+                const Divider(height: 1),
+                _menuTile(Icons.logout, 'Keluar', _signOut, color: AppColors.error),
+              ],
+            ),
           ),
           const SizedBox(height: 24),
         ],
       ),
+    );
+  }
+
+  Widget _statColumn(String value, String label,
+      {IconData? icon, Color? iconColor}) {
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(value,
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            if (icon != null) ...[
+              const SizedBox(width: 4),
+              Icon(icon, size: 16, color: iconColor),
+            ],
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(label, style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+      ],
+    );
+  }
+
+  Widget _menuTile(IconData icon, String label, VoidCallback? onTap,
+      {Color? color}) {
+    return ListTile(
+      leading: Icon(icon, color: color ?? AppColors.primary),
+      title: Text(label, style: TextStyle(color: color, fontWeight: FontWeight.w500)),
+      trailing: Icon(Icons.chevron_right, color: Colors.grey[400]),
+      onTap: onTap,
     );
   }
 }

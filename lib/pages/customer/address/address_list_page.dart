@@ -76,8 +76,9 @@ class _AddressListPageState extends State<AddressListPage> {
       backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text('Daftar Alamat'),
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black87,
+        elevation: 0.5,
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () async {

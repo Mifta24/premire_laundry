@@ -19,6 +19,7 @@ class OrderModel {
   final List<OrderItemModel> orderItems;
   final PaymentModel? payment;
   final String? customerName;
+  final String? customerPhone;
   final String? addressText;
 
   OrderModel({
@@ -39,6 +40,7 @@ class OrderModel {
     this.orderItems = const [],
     this.payment,
     this.customerName,
+    this.customerPhone,
     this.addressText,
   });
 
@@ -82,7 +84,11 @@ class OrderModel {
       orderItems: items,
       payment: payment,
       customerName: json['customer_name'] as String?,
-      addressText: json['address_text'] as String?,
+      customerPhone: json['customer_phone'] as String?,
+      addressText: json['address_text'] as String? ??
+          (json['addresses'] is Map
+              ? (json['addresses'] as Map)['address_text'] as String?
+              : null),
     );
   }
 

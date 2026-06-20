@@ -155,4 +155,87 @@ class AuthProvider extends ChangeNotifier {
       _setLoading(false);
     }
   }
+
+  Future<bool> updateAvailability(bool isAvailable) async {
+    if (_currentUser == null) return false;
+    try {
+      await _supabase
+          .from('profiles')
+          .update({'is_available': isAvailable})
+          .eq('user_id', _currentUser!.id);
+      if (_profile != null) {
+        _profile = _profile!.copyWith(isAvailable: isAvailable);
+        notifyListeners();
+      }
+      return true;
+    } catch (e) {
+      _setError(e.toString());
+      return false;
+    }
+  }
+
+  Future<bool> updateAvatar(String url) async {
+    if (_currentUser == null) return false;
+    try {
+      await _supabase
+          .from('profiles')
+          .update({'avatar_url': url})
+          .eq('user_id', _currentUser!.id);
+      if (_profile != null) {
+        _profile = _profile!.copyWith(avatarUrl: url);
+        notifyListeners();
+      }
+      return true;
+    } catch (e) {
+      _setError(e.toString());
+      return false;
+    }
+  }
+
+  Future<bool> sendPasswordResetEmail(String email) async {
+    _setLoading(true);
+    _setError(null);
+    try {
+      await _supabase.auth.resetPasswordForEmail(email);
+      return true;
+    } on AuthException catch (e) {
+      _setError(e.message);
+      return false;
+    } catch (e) {
+      _setError('Terjadi kesalahan. Silakan coba lagi.');
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  Future<bool> changePassword(
+    String currentPassword,
+    String newPassword,
+  ) async {
+    _setLoading(true);
+    _setError(null);
+    try {
+      final email = _currentUser?.email;
+      if (email == null) {
+        _setError('Sesi tidak valid');
+        return false;
+      }
+      // Verifikasi password saat ini sebelum mengganti.
+      await _supabase.auth.signInWithPassword(
+        email: email,
+        password: currentPassword,
+      );
+      await _supabase.auth.updateUser(UserAttributes(password: newPassword));
+      return true;
+    } on AuthException catch (e) {
+      _setError(e.message);
+      return false;
+    } catch (e) {
+      _setError('Terjadi kesalahan. Silakan coba lagi.');
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
 }

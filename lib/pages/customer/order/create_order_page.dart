@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../models/address_model.dart';
@@ -20,7 +21,8 @@ class CreateOrderPage extends StatefulWidget {
 }
 
 class _CreateOrderPageState extends State<CreateOrderPage> {
-  int _step = 0;
+  late String _orderType;
+  String _paymentMethod = 'qris';
   final _notesController = TextEditingController();
   final _voucherController = TextEditingController();
 
@@ -32,6 +34,7 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
   double _deliveryFee = 0;
   double _subtotal = 0;
   bool _isLoading = false;
+  bool _isSubmitting = false;
 
   // Store location (from settings, defaults here)
   double _storeLat = -6.200000;
@@ -57,6 +60,7 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
   @override
   void initState() {
     super.initState();
+    _orderType = widget.orderType;
     _loadData();
   }
 
@@ -73,20 +77,17 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
       final supabase = Supabase.instance.client;
       final userId = context.read<AuthProvider>().currentUser?.id;
 
-      // Load services if satuan
-      if (widget.orderType == 'satuan') {
-        final servicesData = await supabase
-            .from('laundry_services')
-            .select()
-            .eq('service_type', 'satuan')
-            .eq('is_active', true);
-        _services = _uniqueBy(
-          (servicesData as List<dynamic>).map(
-            (s) => LaundryServiceModel.fromJson(s as Map<String, dynamic>),
-          ),
-          _servicePickerKey,
-        );
-      }
+      final servicesData = await supabase
+          .from('laundry_services')
+          .select()
+          .eq('service_type', 'satuan')
+          .eq('is_active', true);
+      _services = _uniqueBy(
+        (servicesData as List<dynamic>).map(
+          (s) => LaundryServiceModel.fromJson(s as Map<String, dynamic>),
+        ),
+        _servicePickerKey,
+      );
 
       // Load addresses
       if (userId != null) {
@@ -209,7 +210,7 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
   double get _total => _subtotal + _deliveryFee;
 
   List<Map<String, dynamic>> get _orderItems {
-    if (widget.orderType == 'kiloan') return [];
+    if (_orderType == 'kiloan') return [];
     return _services
         .where((s) => (_selectedQuantities[s.id] ?? 0) > 0)
         .map(
@@ -225,6 +226,99 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
         .toList();
   }
 
+  Future<void> _pickAddress() async {
+    final picked = await showModalBottomSheet<AddressModel>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.6,
+        minChildSize: 0.4,
+        maxChildSize: 0.9,
+        expand: false,
+        builder: (ctx, scrollController) => Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Pilih Alamat',
+                      style: TextStyle(
+                          fontSize: 16, fontWeight: FontWeight.bold)),
+                  TextButton.icon(
+                    onPressed: () async {
+                      Navigator.pop(ctx);
+                      await context.push('/customer/address/add');
+                      _loadData();
+                    },
+                    icon: const Icon(Icons.add, size: 18),
+                    label: const Text('Tambah'),
+                  ),
+                ],
+              ),
+              const Divider(),
+              Expanded(
+                child: _addresses.isEmpty
+                    ? const Center(
+                        child: Text('Belum ada alamat. Tambahkan alamat baru.'))
+                    : ListView.builder(
+                        controller: scrollController,
+                        itemCount: _addresses.length,
+                        itemBuilder: (context, i) {
+                          final addr = _addresses[i];
+                          final isSelected = _selectedAddress?.id == addr.id;
+                          return Card(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              side: BorderSide(
+                                color: isSelected
+                                    ? AppColors.primary
+                                    : Colors.transparent,
+                                width: 2,
+                              ),
+                            ),
+                            child: ListTile(
+                              leading: Icon(
+                                Icons.location_on,
+                                color: isSelected
+                                    ? AppColors.primary
+                                    : Colors.grey,
+                              ),
+                              title: Text(addr.label,
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.bold)),
+                              subtitle: Text(
+                                addr.addressText,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              trailing: isSelected
+                                  ? const Icon(Icons.check_circle,
+                                      color: AppColors.primary)
+                                  : null,
+                              onTap: () => Navigator.pop(ctx, addr),
+                            ),
+                          );
+                        },
+                      ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (picked != null) {
+      setState(() => _selectedAddress = picked);
+      _updateDeliveryFee();
+    }
+  }
+
   Future<void> _submitOrder() async {
     if (_selectedAddress == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -234,15 +328,16 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
       );
       return;
     }
-    if (widget.orderType == 'satuan' && _orderItems.isEmpty) {
+    if (_orderType == 'satuan' && _orderItems.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Pilih minimal satu layanan')),
       );
       return;
     }
 
-    setState(() => _isLoading = true);
-    final userId = context.read<AuthProvider>().currentUser?.id ?? '';
+    setState(() => _isSubmitting = true);
+    final authProvider = context.read<AuthProvider>();
+    final userId = authProvider.currentUser?.id ?? '';
     final provider = context.read<CustomerProvider>();
 
     double? distKm;
@@ -258,7 +353,7 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
 
     final orderId = await provider.createOrder(
       customerId: userId,
-      orderType: widget.orderType,
+      orderType: _orderType,
       items: _orderItems,
       addressId: _selectedAddress!.id,
       notes: _notesController.text.trim(),
@@ -271,450 +366,423 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
       estimatedDistanceKm: distKm,
     );
 
-    setState(() => _isLoading = false);
     if (!mounted) return;
 
-    if (orderId != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Pesanan berhasil dibuat!'),
-          backgroundColor: AppColors.success,
-        ),
-      );
-      context.go('/customer/order/$orderId');
-    } else {
+    if (orderId == null) {
+      setState(() => _isSubmitting = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(provider.error ?? 'Gagal membuat pesanan'),
           backgroundColor: AppColors.error,
         ),
       );
+      return;
+    }
+
+    if (_orderType == 'kiloan') {
+      setState(() => _isSubmitting = false);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Pesanan berhasil dibuat!'),
+          backgroundColor: AppColors.success,
+        ),
+      );
+      context.pushReplacement('/customer/order/$orderId');
+      return;
+    }
+
+    // Satuan: price is known upfront, proceed straight to payment.
+    if (_paymentMethod == 'qris') {
+      final paymentId = await provider.createPayment(
+        orderId: orderId,
+        customerId: userId,
+        method: 'manual_qris',
+        amount: _total,
+      );
+      setState(() => _isSubmitting = false);
+      if (!mounted) return;
+      if (paymentId != null) {
+        context.pushReplacement('/customer/payment/qris/$orderId');
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(provider.error ?? 'Gagal membuat pembayaran'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+        context.pushReplacement('/customer/order/$orderId');
+      }
+      return;
+    }
+
+    // Xendit
+    try {
+      final response = await Supabase.instance.client.functions.invoke(
+        'create-xendit-invoice',
+        body: {
+          'orderId': orderId,
+          'amount': _total,
+          'customerName': authProvider.profile?.name ?? 'Customer',
+          'customerEmail': authProvider.currentUser?.email ?? '',
+        },
+      );
+      final paymentUrl = response.data?['invoiceUrl'] as String?;
+      if (paymentUrl != null) {
+        final uri = Uri.parse(paymentUrl);
+        final launched =
+            await launchUrl(uri, mode: LaunchMode.externalApplication);
+        if (!launched) {
+          await launchUrl(uri, mode: LaunchMode.inAppWebView);
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal membuka halaman pembayaran: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+        context.pushReplacement('/customer/order/$orderId');
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: Text(
-          widget.orderType == 'kiloan' ? 'Order Kiloan' : 'Order Satuan',
-        ),
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
+        title: const Text('Buat Pesanan'),
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black87,
+        elevation: 0.5,
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : Column(
-              children: [
-                _buildStepIndicator(),
-                Expanded(
-                  child: IndexedStack(
-                    index: _step,
-                    children: [_buildStep1(), _buildStep2(), _buildStep3()],
-                  ),
-                ),
-                _buildNavigationButtons(),
-              ],
-            ),
-    );
-  }
-
-  Widget _buildStepIndicator() {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16),
-      color: Colors.white,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          _stepChip(0, 'Detail'),
-          _stepDivider(),
-          _stepChip(1, 'Alamat'),
-          _stepDivider(),
-          _stepChip(2, 'Ringkasan'),
-        ],
-      ),
-    );
-  }
-
-  Widget _stepChip(int index, String label) {
-    final isActive = _step == index;
-    final isDone = _step > index;
-    return Column(
-      children: [
-        CircleAvatar(
-          radius: 16,
-          backgroundColor: isDone
-              ? AppColors.success
-              : isActive
-              ? AppColors.primary
-              : Colors.grey[300],
-          child: isDone
-              ? const Icon(Icons.check, color: Colors.white, size: 16)
-              : Text(
-                  '${index + 1}',
-                  style: TextStyle(
-                    color: isActive ? Colors.white : Colors.grey[600],
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 11,
-            color: isActive ? AppColors.primary : Colors.grey,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _stepDivider() {
-    return Container(
-      width: 40,
-      height: 2,
-      margin: const EdgeInsets.only(bottom: 20, left: 4, right: 4),
-      color: Colors.grey[300],
-    );
-  }
-
-  Widget _buildStep1() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (widget.orderType == 'satuan') ...[
-            const Text(
-              'Pilih Layanan',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 12),
-            if (_services.isEmpty)
-              const Center(child: Text('Tidak ada layanan tersedia'))
-            else
-              ..._services.map((svc) {
-                final qty = _selectedQuantities[svc.id] ?? 0;
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: ListTile(
-                    title: Text(svc.name),
-                    subtitle: Text('${formatRupiah(svc.price)} / ${svc.unit}'),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.remove_circle_outline),
-                          color: AppColors.primary,
-                          onPressed: qty > 0
-                              ? () {
-                                  setState(() {
-                                    _selectedQuantities[svc.id] = qty - 1;
-                                  });
-                                  _updateSubtotal();
-                                }
-                              : null,
-                        ),
-                        Text(
-                          '$qty',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.add_circle_outline),
-                          color: AppColors.primary,
-                          onPressed: () {
-                            setState(() {
-                              _selectedQuantities[svc.id] = qty + 1;
-                            });
-                            _updateSubtotal();
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              }),
-            const SizedBox(height: 16),
-          ],
-          if (widget.orderType == 'kiloan')
-            Card(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Padding(
-                padding: EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    Icon(Icons.info_outline, color: AppColors.primary),
-                    SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        'Berat pakaian akan ditimbang di toko. Total pembayaran akan dihitung setelah penimbangan.',
-                        style: TextStyle(fontSize: 13),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          const SizedBox(height: 16),
-          TextFormField(
-            controller: _notesController,
-            maxLines: 3,
-            decoration: InputDecoration(
-              labelText: 'Catatan (opsional)',
-              hintText: 'Contoh: Pisahkan pakaian anak-anak',
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              filled: true,
-              fillColor: Colors.white,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStep2() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Pilih Alamat',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-              TextButton.icon(
-                onPressed: () async {
-                  await context.push('/customer/address/add');
-                  _loadData();
-                },
-                icon: const Icon(Icons.add, size: 18),
-                label: const Text('Tambah'),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          if (_addresses.isEmpty)
-            Card(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Padding(
-                padding: EdgeInsets.all(20),
-                child: Center(
-                  child: Text('Belum ada alamat. Tambahkan alamat baru.'),
-                ),
-              ),
-            )
-          else
-            ..._addresses.map((addr) {
-              final isSelected = _selectedAddress?.id == addr.id;
-              return Card(
-                margin: const EdgeInsets.only(bottom: 8),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  side: BorderSide(
-                    color: isSelected ? AppColors.primary : Colors.transparent,
-                    width: 2,
-                  ),
-                ),
-                child: ListTile(
-                  leading: Icon(
-                    Icons.location_on,
-                    color: isSelected ? AppColors.primary : Colors.grey,
-                  ),
-                  title: Row(
-                    children: [
-                      Text(
-                        addr.label,
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      if (addr.isDefault) ...[
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: const Text(
-                            'Utama',
-                            style: TextStyle(
-                              fontSize: 10,
-                              color: AppColors.primary,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                  subtitle: Text(
-                    addr.addressText,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  trailing: isSelected
-                      ? const Icon(Icons.check_circle, color: AppColors.primary)
-                      : null,
-                  onTap: () {
-                    setState(() => _selectedAddress = addr);
-                    _updateDeliveryFee();
-                  },
-                ),
-              );
-            }),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStep3() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Ringkasan Pesanan',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 12),
-          Card(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Padding(
+          : SingleChildScrollView(
               padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _summaryRow(
-                    'Tipe',
-                    widget.orderType == 'kiloan' ? 'Kiloan' : 'Satuan',
-                  ),
-                  if (_selectedAddress != null) ...[
-                    _summaryRow('Alamat', _selectedAddress!.addressText),
-                  ],
-                  if (_notesController.text.isNotEmpty)
-                    _summaryRow('Catatan', _notesController.text),
-                ],
-              ),
-            ),
-          ),
-          if (widget.orderType == 'satuan' && _orderItems.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            const Text(
-              'Item',
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 8),
-            Card(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Column(
-                children: _orderItems
-                    .map(
-                      (item) => ListTile(
-                        title: Text(item['service_name'] as String),
-                        subtitle: Text('${item['quantity']} pcs'),
-                        trailing: Text(formatRupiah(item['subtotal'] as num)),
+                  _buildTypeToggle(),
+                  const SizedBox(height: 16),
+                  _sectionTitle('Pilih Layanan'),
+                  const SizedBox(height: 8),
+                  _buildServiceSection(),
+                  const SizedBox(height: 16),
+                  _sectionTitle('Alamat Pengantaran'),
+                  const SizedBox(height: 8),
+                  _buildAddressTile(),
+                  const SizedBox(height: 16),
+                  _sectionTitle('Catatan Pakaian'),
+                  const SizedBox(height: 8),
+                  TextFormField(
+                    controller: _notesController,
+                    maxLines: 3,
+                    maxLength: 150,
+                    decoration: InputDecoration(
+                      hintText: 'Contoh: Hindari pemutih, pakaian bayi, dll.',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                    )
-                    .toList(),
-              ),
-            ),
-          ],
-          const SizedBox(height: 12),
-          Card(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  if (widget.orderType == 'kiloan')
-                    const Padding(
-                      padding: EdgeInsets.only(bottom: 8),
-                      child: Text(
-                        'Subtotal dihitung setelah penimbangan',
-                        style: TextStyle(fontSize: 12, color: Colors.orange),
-                      ),
+                      filled: true,
+                      fillColor: Colors.white,
                     ),
-                  _amountRow(
-                    'Subtotal',
-                    widget.orderType == 'kiloan'
-                        ? 'Belum dihitung'
-                        : formatRupiah(_subtotal),
                   ),
-                  _amountRow('Ongkir', formatRupiah(_deliveryFee)),
-                  const Divider(),
-                  _amountRow(
-                    'Total',
-                    widget.orderType == 'kiloan'
-                        ? formatRupiah(_deliveryFee)
-                        : formatRupiah(_total),
-                    bold: true,
+                  const SizedBox(height: 16),
+                  _buildEstimasiOngkir(),
+                  if (_orderType == 'satuan') ...[
+                    const SizedBox(height: 16),
+                    _sectionTitle('Metode Pembayaran'),
+                    const SizedBox(height: 8),
+                    _paymentOption(
+                      value: 'qris',
+                      icon: Icons.qr_code,
+                      title: 'QRIS Manual',
+                      subtitle: 'Bayar via QRIS dari semua e-wallet',
+                    ),
+                    const SizedBox(height: 8),
+                    _paymentOption(
+                      value: 'xendit',
+                      icon: Icons.payment,
+                      title: 'Xendit',
+                      subtitle: 'Pembayaran aman via Xendit',
+                    ),
+                    const SizedBox(height: 16),
+                    _buildSummary(),
+                  ],
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: _voucherController,
+                    decoration: InputDecoration(
+                      labelText: 'Kode Voucher (opsional)',
+                      prefixIcon: const Icon(Icons.card_giftcard),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      filled: true,
+                      fillColor: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  AppButton(
+                    onPressed: _submitOrder,
+                    label: 'Buat Pesanan',
+                    isLoading: _isSubmitting,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Dengan membuat pesanan, Anda menyetujui Syarat & Ketentuan kami.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 11, color: Colors.grey[600]),
                   ),
                 ],
               ),
             ),
-          ),
-          const SizedBox(height: 12),
-          TextFormField(
-            controller: _voucherController,
-            decoration: InputDecoration(
-              labelText: 'Kode Voucher (opsional)',
-              prefixIcon: const Icon(Icons.card_giftcard),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              filled: true,
-              fillColor: Colors.white,
-            ),
-          ),
+    );
+  }
+
+  Widget _sectionTitle(String title) {
+    return Text(title,
+        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold));
+  }
+
+  Widget _buildTypeToggle() {
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Expanded(child: _typeButton('kiloan', 'Laundry Kiloan', Icons.scale)),
+          const SizedBox(width: 4),
+          Expanded(
+              child: _typeButton('satuan', 'Laundry Satuan', Icons.checkroom)),
         ],
       ),
     );
   }
 
-  Widget _summaryRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 80,
-            child: Text(
+  Widget _typeButton(String type, String label, IconData icon) {
+    final isSelected = _orderType == type;
+    return GestureDetector(
+      onTap: () => setState(() => _orderType = type),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.primary : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: isSelected ? Colors.white : Colors.grey[600]),
+            const SizedBox(height: 4),
+            Text(
               label,
-              style: TextStyle(color: Colors.grey[600], fontSize: 13),
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: isSelected ? Colors.white : Colors.grey[600],
+              ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildServiceSection() {
+    if (_orderType == 'kiloan') {
+      return Card(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: const Padding(
+          padding: EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Icon(Icons.info_outline, color: AppColors.primary),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Berat pakaian akan ditimbang di toko. Total pembayaran dihitung setelah penimbangan.',
+                  style: TextStyle(fontSize: 13),
+                ),
+              ),
+            ],
           ),
-          Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
+        ),
+      );
+    }
+
+    if (_services.isEmpty) {
+      return const Card(
+        child: Padding(
+          padding: EdgeInsets.all(20),
+          child: Center(child: Text('Tidak ada layanan tersedia')),
+        ),
+      );
+    }
+
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Column(
+        children: _services.map((svc) {
+          final qty = _selectedQuantities[svc.id] ?? 0;
+          return ListTile(
+            leading: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.checkroom, color: AppColors.primary),
             ),
-          ),
-        ],
+            title: Text(svc.name),
+            subtitle: Text('${formatRupiah(svc.price)} / ${svc.unit}'),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.remove_circle_outline),
+                  color: AppColors.primary,
+                  onPressed: qty > 0
+                      ? () {
+                          setState(() {
+                            _selectedQuantities[svc.id] = qty - 1;
+                          });
+                          _updateSubtotal();
+                        }
+                      : null,
+                ),
+                Text('$qty',
+                    style: const TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.bold)),
+                IconButton(
+                  icon: const Icon(Icons.add_circle_outline),
+                  color: AppColors.primary,
+                  onPressed: () {
+                    setState(() {
+                      _selectedQuantities[svc.id] = qty + 1;
+                    });
+                    _updateSubtotal();
+                  },
+                ),
+              ],
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildAddressTile() {
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: ListTile(
+        leading: const Icon(Icons.location_on, color: AppColors.primary),
+        title: Text(
+          _selectedAddress?.label ?? 'Pilih alamat',
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        subtitle: Text(
+          _selectedAddress?.addressText ?? 'Belum ada alamat terpilih',
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
+        trailing: const Icon(Icons.chevron_right, color: Colors.grey),
+        onTap: _pickAddress,
+      ),
+    );
+  }
+
+  Widget _buildEstimasiOngkir() {
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            const Icon(Icons.delivery_dining, color: AppColors.primary),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Estimasi Ongkir',
+                      style: TextStyle(fontWeight: FontWeight.w600)),
+                  Text('Estimasi waktu jemput: 1-2 jam',
+                      style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                ],
+              ),
+            ),
+            Text(
+              formatRupiah(_deliveryFee),
+              style: const TextStyle(
+                  fontWeight: FontWeight.bold, color: AppColors.primary),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _paymentOption({
+    required String value,
+    required IconData icon,
+    required String title,
+    required String subtitle,
+  }) {
+    final isSelected = _paymentMethod == value;
+    return Card(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(
+          color: isSelected ? AppColors.primary : Colors.transparent,
+          width: 1.5,
+        ),
+      ),
+      child: RadioListTile<String>(
+        value: value,
+        groupValue: _paymentMethod,
+        onChanged: (v) => setState(() => _paymentMethod = v!),
+        activeColor: AppColors.primary,
+        title: Row(
+          children: [
+            Icon(icon, color: AppColors.primary, size: 20),
+            const SizedBox(width: 8),
+            Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+          ],
+        ),
+        subtitle: Padding(
+          padding: const EdgeInsets.only(left: 28),
+          child: Text(subtitle,
+              style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSummary() {
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            _amountRow('Subtotal', formatRupiah(_subtotal)),
+            _amountRow('Ongkir', formatRupiah(_deliveryFee)),
+            const Divider(),
+            _amountRow('Total', formatRupiah(_total), bold: true),
+          ],
+        ),
       ),
     );
   }
@@ -737,45 +805,6 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
               fontWeight: bold ? FontWeight.bold : FontWeight.normal,
               fontSize: bold ? 16 : 14,
               color: bold ? AppColors.primary : null,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNavigationButtons() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 8,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          if (_step > 0) ...[
-            Expanded(
-              child: AppButton(
-                onPressed: () => setState(() => _step--),
-                label: 'Kembali',
-                isOutlined: true,
-              ),
-            ),
-            const SizedBox(width: 12),
-          ],
-          Expanded(
-            child: AppButton(
-              onPressed: _step < 2
-                  ? () => setState(() => _step++)
-                  : _submitOrder,
-              label: _step < 2 ? 'Lanjut' : 'Buat Pesanan',
-              isLoading: _isLoading,
             ),
           ),
         ],

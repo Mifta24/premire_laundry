@@ -5,19 +5,49 @@ import '../models/courier_task_model.dart';
 class CourierProvider extends ChangeNotifier {
   final _supabase = Supabase.instance.client;
   static const _taskSelect =
-      '*, orders(order_code, notes, customer_id, address_id, addresses(address_text, latitude, longitude))';
+      '*, orders(order_code, order_type, total_amount, notes, customer_id, address_id, addresses(address_text, notes, latitude, longitude))';
 
   List<CourierTaskModel> _pickupTasks = [];
   List<CourierTaskModel> _deliveryTasks = [];
+  List<CourierTaskModel> _history = [];
   bool _isLoading = false;
+  bool _isHistoryLoading = false;
   String? _error;
   RealtimeChannel? _channel;
   String? _subscribedCourierId;
 
   List<CourierTaskModel> get pickupTasks => _pickupTasks;
   List<CourierTaskModel> get deliveryTasks => _deliveryTasks;
+  List<CourierTaskModel> get history => _history;
   bool get isLoading => _isLoading;
+  bool get isHistoryLoading => _isHistoryLoading;
   String? get error => _error;
+
+  int get activePickupCount =>
+      _pickupTasks.where((t) => t.status != 'picked_up').length;
+  int get activeDeliveryCount =>
+      _deliveryTasks.where((t) => t.status != 'delivered').length;
+
+  int get completedTodayCount {
+    final now = DateTime.now();
+    return _history.where((t) {
+      final c = t.completedAt;
+      return c != null &&
+          c.year == now.year &&
+          c.month == now.month &&
+          c.day == now.day;
+    }).length;
+  }
+
+  int get completedThisWeekCount => historyWithinDays(7).length;
+
+  List<CourierTaskModel> historyWithinDays(int days) {
+    final cutoff = DateTime.now().subtract(Duration(days: days));
+    return _history.where((t) {
+      final c = t.completedAt;
+      return c != null && c.isAfter(cutoff);
+    }).toList();
+  }
 
   List<T> _uniqueBy<T>(Iterable<T> items, String Function(T item) keyOf) {
     final seen = <String>{};
@@ -63,6 +93,29 @@ class CourierProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> loadTaskHistory(String courierId) async {
+    _isHistoryLoading = true;
+    notifyListeners();
+    try {
+      final cutoff = DateTime.now().subtract(const Duration(days: 30));
+      final data = await _supabase
+          .from('courier_tasks')
+          .select(_taskSelect)
+          .eq('courier_id', courierId)
+          .inFilter('status', ['picked_up', 'delivered'])
+          .gte('completed_at', cutoff.toIso8601String())
+          .order('completed_at', ascending: false);
+
+      final tasks = await _buildTasksWithCustomerNames(data as List<dynamic>);
+      _history = _uniqueBy(tasks, (task) => task.id);
+    } catch (e) {
+      _setError(e.toString());
+    } finally {
+      _isHistoryLoading = false;
+      notifyListeners();
+    }
+  }
+
   Future<List<CourierTaskModel>> _buildTasksWithCustomerNames(
     List<dynamic> data,
   ) async {
@@ -74,16 +127,20 @@ class CourierProvider extends ChangeNotifier {
         .toList();
 
     // Fetch profiles for those customer IDs
-    final Map<String, String> customerNames = {};
+    final Map<String, Map<String, String?>> customerProfiles = {};
     if (customerIds.isNotEmpty) {
       final profiles = await _supabase
           .from('profiles')
-          .select('user_id, name')
+          .select('user_id, name, phone')
           .inFilter('user_id', customerIds);
       for (final p in profiles as List<dynamic>) {
         final uid = p['user_id'] as String?;
-        final name = p['name'] as String?;
-        if (uid != null && name != null) customerNames[uid] = name;
+        if (uid != null) {
+          customerProfiles[uid] = {
+            'name': p['name'] as String?,
+            'phone': p['phone'] as String?,
+          };
+        }
       }
     }
 
@@ -93,9 +150,9 @@ class CourierProvider extends ChangeNotifier {
       final order = raw['orders'] as Map<String, dynamic>?;
       if (order != null) {
         final customerId = order['customer_id'] as String?;
-        if (customerId != null && customerNames.containsKey(customerId)) {
+        if (customerId != null && customerProfiles.containsKey(customerId)) {
           final orderCopy = Map<String, dynamic>.from(order);
-          orderCopy['profiles'] = {'name': customerNames[customerId]};
+          orderCopy['profiles'] = customerProfiles[customerId];
           raw['orders'] = orderCopy;
         }
       }

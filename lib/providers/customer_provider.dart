@@ -51,7 +51,7 @@ class CustomerProvider extends ChangeNotifier {
     try {
       final data = await _supabase
           .from('orders')
-          .select('*, order_items(*), payments(*)')
+          .select('*, order_items(*), payments(*), addresses(address_text)')
           .eq('customer_id', userId)
           .order('created_at', ascending: false);
       _orders = _uniqueBy(

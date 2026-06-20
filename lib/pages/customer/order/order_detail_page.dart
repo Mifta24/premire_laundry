@@ -5,10 +5,12 @@ import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/currency_formatter.dart';
+import '../../../core/utils/date_formatter.dart';
 import '../../../models/order_model.dart';
 import '../../../providers/customer_provider.dart';
 import '../../../widgets/app_button.dart';
 import '../../../widgets/status_badge.dart';
+import '../../../widgets/order_timeline.dart';
 
 class OrderDetailPage extends StatefulWidget {
   final String orderId;
@@ -155,8 +157,9 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
       return Scaffold(
         appBar: AppBar(
           title: const Text('Detail Pesanan'),
-          backgroundColor: AppColors.primary,
-          foregroundColor: Colors.white,
+          backgroundColor: Colors.white,
+          foregroundColor: Colors.black87,
+          elevation: 0.5,
         ),
         body: const Center(child: CircularProgressIndicator()),
       );
@@ -166,8 +169,9 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
       return Scaffold(
         appBar: AppBar(
           title: const Text('Detail Pesanan'),
-          backgroundColor: AppColors.primary,
-          foregroundColor: Colors.white,
+          backgroundColor: Colors.white,
+          foregroundColor: Colors.black87,
+          elevation: 0.5,
         ),
         body: const Center(child: Text('Pesanan tidak ditemukan')),
       );
@@ -184,8 +188,9 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Detail Pesanan'),
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black87,
+        elevation: 0.5,
         actions: [
           IconButton(icon: const Icon(Icons.refresh), onPressed: _loadOrder),
         ],
@@ -209,35 +214,46 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Expanded(
-                            child: Text(
-                              order.orderCode,
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.primary,
-                              ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  order.orderCode,
+                                  style: const TextStyle(
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.black87,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  order.orderType == 'kiloan'
+                                      ? 'Laundry Kiloan'
+                                      : order.orderType == 'satuan'
+                                          ? 'Laundry Satuan'
+                                          : 'Laundry Campuran',
+                                  style: TextStyle(
+                                      fontSize: 13, color: Colors.grey[600]),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  formatTanggalIndo(order.createdAt),
+                                  style: TextStyle(
+                                      fontSize: 12, color: Colors.grey[500]),
+                                ),
+                              ],
                             ),
                           ),
                           StatusBadge(status: _displayOrderStatus(order)),
                         ],
                       ),
-                      const Divider(height: 24),
-                      _infoRow(
-                        'Tipe',
-                        order.orderType == 'kiloan'
-                            ? 'Kiloan'
-                            : order.orderType == 'satuan'
-                            ? 'Satuan'
-                            : 'Campuran',
-                      ),
-                      _infoRow(
-                        'Tanggal',
-                        '${order.createdAt.day}/${order.createdAt.month}/${order.createdAt.year}',
-                      ),
-                      if (order.notes != null && order.notes!.isNotEmpty)
+                      if (order.notes != null && order.notes!.isNotEmpty) ...[
+                        const Divider(height: 24),
                         _infoRow('Catatan', order.notes!),
+                      ],
                     ],
                   ),
                 ),
@@ -328,31 +344,11 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
                 const SizedBox(height: 8),
                 Card(
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(16),
                   ),
-                  child: Column(
-                    children: _statusHistory.map((h) {
-                      final dt = DateTime.parse(
-                        h['created_at'] as String? ?? '',
-                      );
-                      return ListTile(
-                        leading: const Icon(
-                          Icons.history,
-                          color: AppColors.primary,
-                        ),
-                        title: StatusBadge(
-                          status: h['status'] as String? ?? '',
-                        ),
-                        subtitle: Text(
-                          h['note'] as String? ?? '',
-                          style: const TextStyle(fontSize: 12),
-                        ),
-                        trailing: Text(
-                          '${dt.day}/${dt.month} ${dt.hour}:${dt.minute.toString().padLeft(2, '0')}',
-                          style: const TextStyle(fontSize: 12),
-                        ),
-                      );
-                    }).toList(),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                    child: OrderTimeline(history: _statusHistory),
                   ),
                 ),
               ],
@@ -376,10 +372,34 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
                   color: AppColors.error,
                 ),
               ],
+              if (canPay || canCancel) const SizedBox(height: 12),
+              AppButton(
+                onPressed: () => _showHelpDialog(order.orderCode),
+                label: 'Butuh Bantuan?',
+                isOutlined: true,
+              ),
               const SizedBox(height: 16),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  void _showHelpDialog(String orderCode) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Butuh Bantuan?'),
+        content: Text(
+          'Hubungi admin Premier Laundry melalui toko untuk bantuan terkait pesanan $orderCode.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Tutup'),
+          ),
+        ],
       ),
     );
   }

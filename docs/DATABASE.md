@@ -17,10 +17,13 @@ create table profiles (
   name text not null,
   phone text,
   role text not null check (role in ('customer', 'courier', 'admin')),
+  is_available boolean not null default true,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
 ```
+
+`is_available` dipakai khusus untuk role courier (toggle "Aktif Menerima Tugas" di halaman Akun Kurir).
 
 ---
 
@@ -404,7 +407,8 @@ xendit_callback_token
 ```text
 payment-proofs
 laundry-photos
-profile-photos
+profile-photos   -- public bucket, dipakai foto profil customer/kurir/admin
+                 -- (lihat add_profile_photos_storage.sql untuk policy-nya)
 qris-assets
 ```
 

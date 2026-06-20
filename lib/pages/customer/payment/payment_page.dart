@@ -115,8 +115,9 @@ class _PaymentPageState extends State<PaymentPage> {
       return Scaffold(
         appBar: AppBar(
           title: const Text('Pembayaran'),
-          backgroundColor: AppColors.primary,
-          foregroundColor: Colors.white,
+          backgroundColor: Colors.white,
+          foregroundColor: Colors.black87,
+          elevation: 0.5,
         ),
         body: const Center(child: CircularProgressIndicator()),
       );
@@ -126,8 +127,9 @@ class _PaymentPageState extends State<PaymentPage> {
       return Scaffold(
         appBar: AppBar(
           title: const Text('Pembayaran'),
-          backgroundColor: AppColors.primary,
-          foregroundColor: Colors.white,
+          backgroundColor: Colors.white,
+          foregroundColor: Colors.black87,
+          elevation: 0.5,
         ),
         body: const Center(child: Text('Pesanan tidak ditemukan')),
       );
@@ -138,8 +140,9 @@ class _PaymentPageState extends State<PaymentPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Pembayaran'),
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black87,
+        elevation: 0.5,
       ),
       backgroundColor: AppColors.background,
       body: SingleChildScrollView(

@@ -179,8 +179,9 @@ class _ManageServicesPageState extends State<ManageServicesPage> {
       backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text('Kelola Layanan'),
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black87,
+        elevation: 0.5,
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showDialog(),

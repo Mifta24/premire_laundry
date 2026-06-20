@@ -3,10 +3,11 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
 import '../../providers/admin_provider.dart';
-import '../../providers/auth_provider.dart';
+import 'account/admin_account_page.dart';
+import 'courier/admin_courier_list_page.dart';
+import 'dashboard/admin_dashboard_page.dart';
 import 'order/admin_order_list_page.dart';
-import 'payment/admin_payment_list_page.dart';
-import 'settings/admin_settings_page.dart';
+import 'report/admin_report_page.dart';
 
 class AdminHomePage extends StatefulWidget {
   const AdminHomePage({super.key});
@@ -36,24 +37,20 @@ class _AdminHomePageState extends State<AdminHomePage> {
     await Future.wait([
       provider.loadAllOrders(),
       provider.loadPendingPayments(),
+      provider.loadPaidPayments(),
       provider.loadServices(),
       provider.loadCouriers(),
       provider.loadDeliveryFees(),
+      provider.loadActiveCourierTasks(),
     ]);
   }
 
-  Future<void> _signOut() async {
-    await context.read<AuthProvider>().signOut();
-    if (!mounted) return;
-    context.go('/login');
-  }
-
   final List<String> _titles = [
-    'Pesanan',
-    'Pembayaran',
-    'Layanan',
-    'Ongkir',
-    'Pengaturan',
+    'Dashboard',
+    'Daftar Pesanan',
+    'Kurir',
+    'Laporan & Pembayaran',
+    'Akun Saya',
   ];
 
   @override
@@ -62,34 +59,41 @@ class _AdminHomePageState extends State<AdminHomePage> {
     final pendingCount = provider.pendingPayments.length;
 
     final pages = [
+      AdminDashboardPage(
+        onNavigateTab: (i) => setState(() => _currentIndex = i),
+      ),
       const AdminOrderListPage(),
-      const AdminPaymentListPage(),
-      const _AdminServicesTab(),
-      const _AdminDeliveryFeesTab(),
-      const AdminSettingsPage(),
+      const AdminCourierListPage(),
+      const AdminReportPage(),
+      const AdminAccountPage(),
     ];
 
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black87,
+        elevation: 0.5,
         title: Text(_titles[_currentIndex]),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadAll,
-          ),
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: _signOut,
-          ),
+          if (_currentIndex == 0)
+            IconButton(
+              icon: const Icon(Icons.notifications_outlined),
+              onPressed: () {},
+            ),
         ],
       ),
       body: IndexedStack(
         index: _currentIndex,
         children: pages,
       ),
+      floatingActionButton: _currentIndex == 2
+          ? FloatingActionButton(
+              backgroundColor: AppColors.primary,
+              onPressed: () => context.push('/admin/courier/add'),
+              child: const Icon(Icons.person_add, color: Colors.white),
+            )
+          : null,
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: (i) => setState(() => _currentIndex = i),
@@ -98,15 +102,25 @@ class _AdminHomePageState extends State<AdminHomePage> {
         unselectedItemColor: Colors.grey,
         items: [
           const BottomNavigationBarItem(
+            icon: Icon(Icons.dashboard_outlined),
+            activeIcon: Icon(Icons.dashboard),
+            label: 'Dashboard',
+          ),
+          const BottomNavigationBarItem(
             icon: Icon(Icons.receipt_long_outlined),
             activeIcon: Icon(Icons.receipt_long),
             label: 'Pesanan',
+          ),
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.delivery_dining_outlined),
+            activeIcon: Icon(Icons.delivery_dining),
+            label: 'Kurir',
           ),
           BottomNavigationBarItem(
             icon: Stack(
               clipBehavior: Clip.none,
               children: [
-                const Icon(Icons.payment_outlined),
+                const Icon(Icons.bar_chart_outlined),
                 if (pendingCount > 0)
                   Positioned(
                     right: -6,
@@ -116,84 +130,19 @@ class _AdminHomePageState extends State<AdminHomePage> {
                       backgroundColor: AppColors.error,
                       child: Text(
                         '$pendingCount',
-                        style: const TextStyle(
-                            fontSize: 10, color: Colors.white),
+                        style: const TextStyle(fontSize: 10, color: Colors.white),
                       ),
                     ),
                   ),
               ],
             ),
-            activeIcon: const Icon(Icons.payment),
-            label: 'Pembayaran',
+            activeIcon: const Icon(Icons.bar_chart),
+            label: 'Laporan',
           ),
           const BottomNavigationBarItem(
-            icon: Icon(Icons.local_laundry_service_outlined),
-            activeIcon: Icon(Icons.local_laundry_service),
-            label: 'Layanan',
-          ),
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.delivery_dining_outlined),
-            activeIcon: Icon(Icons.delivery_dining),
-            label: 'Ongkir',
-          ),
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.settings_outlined),
-            activeIcon: Icon(Icons.settings),
-            label: 'Pengaturan',
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// These tabs push to the standalone pages (which have their own Scaffold/AppBar)
-// rather than embedding them directly, avoiding nested-Scaffold issues.
-class _AdminServicesTab extends StatelessWidget {
-  const _AdminServicesTab();
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.local_laundry_service,
-              size: 64, color: AppColors.primary),
-          const SizedBox(height: 16),
-          const Text('Kelola Layanan Laundry',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 24),
-          ElevatedButton.icon(
-            onPressed: () => context.push('/admin/services'),
-            icon: const Icon(Icons.open_in_new),
-            label: const Text('Buka Halaman Layanan'),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _AdminDeliveryFeesTab extends StatelessWidget {
-  const _AdminDeliveryFeesTab();
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.delivery_dining,
-              size: 64, color: AppColors.secondary),
-          const SizedBox(height: 16),
-          const Text('Kelola Ongkos Kirim',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 24),
-          ElevatedButton.icon(
-            onPressed: () => context.push('/admin/delivery-fees'),
-            icon: const Icon(Icons.open_in_new),
-            label: const Text('Buka Halaman Ongkir'),
+            icon: Icon(Icons.person_outlined),
+            activeIcon: Icon(Icons.person),
+            label: 'Akun',
           ),
         ],
       ),
