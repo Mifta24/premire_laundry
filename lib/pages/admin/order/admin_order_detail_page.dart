@@ -49,25 +49,33 @@ class _AdminOrderDetailPageState extends State<AdminOrderDetailPage> {
         ];
       case 'waiting_pickup':
         return ['cancelled'];
+      // Mulai 'picked_up', laundry sudah di tangan kurir/toko, jadi
+      // pembatalan sederhana (ubah status) tidak lagi ditawarkan —
+      // butuh alur retur terpisah kalau memang perlu dibatalkan.
       case 'picked_up':
-        return ['received_by_store', 'cancelled'];
+        return ['received_by_store'];
       case 'received_by_store':
         if (order.orderType == 'kiloan') return ['waiting_weight_input'];
-        return ['washing', 'cancelled'];
+        return ['washing'];
       case 'waiting_weight_input':
-        return ['waiting_payment', 'cancelled'];
+        return ['waiting_payment'];
       case 'waiting_payment':
         if (order.paymentStatus == 'paid') return ['paid'];
-        return ['cancelled'];
-      case 'paid':
+        // Untuk pesanan satuan, tahap ini terjadi sebelum laundry
+        // dijemput (bayar dulu, baru dijemput) sehingga masih aman
+        // dibatalkan. Untuk kiloan, tahap ini terjadi setelah laundry
+        // dijemput, jadi tidak ditawarkan cancel.
         if (order.orderType == 'satuan') return ['cancelled'];
-        return ['washing', 'cancelled'];
+        return const [];
+      case 'paid':
+        if (order.orderType == 'satuan') return const [];
+        return ['washing'];
       case 'washing':
-        return ['ironing', 'cancelled'];
+        return ['ironing'];
       case 'ironing':
-        return ['ready_to_deliver', 'cancelled'];
+        return ['ready_to_deliver'];
       case 'ready_to_deliver':
-        return ['cancelled'];
+        return const [];
       case 'out_for_delivery':
         return const [];
       default:
@@ -110,8 +118,7 @@ class _AdminOrderDetailPageState extends State<AdminOrderDetailPage> {
 
   List<String> _availableTaskTypesFor(OrderModel order) {
     final types = <String>[];
-    if (((order.status == 'created' && order.orderType != 'satuan') ||
-            (order.status == 'paid' && order.orderType == 'satuan') ||
+    if (((order.status == 'paid' && order.orderType == 'satuan') ||
             order.status == 'waiting_pickup') &&
         !_hasActiveTask('pickup')) {
       types.add('pickup');
@@ -128,6 +135,9 @@ class _AdminOrderDetailPageState extends State<AdminOrderDetailPage> {
     }
     if (order.orderType == 'satuan' && order.status == 'created') {
       return 'Pesanan satuan harus dibayar sebelum dijemput';
+    }
+    if (order.status == 'created') {
+      return 'Ubah status pesanan ke "Menunggu Jemput" sebelum menugaskan kurir';
     }
     return 'Tidak ada tugas kurir yang perlu dibuat pada tahap ini';
   }
@@ -199,8 +209,7 @@ class _AdminOrderDetailPageState extends State<AdminOrderDetailPage> {
     }
 
     final types = <String>[];
-    if (((order.status == 'created' && order.orderType != 'satuan') ||
-            (order.status == 'paid' && order.orderType == 'satuan') ||
+    if (((order.status == 'paid' && order.orderType == 'satuan') ||
             order.status == 'waiting_pickup') &&
         !hasActiveTask('pickup')) {
       types.add('pickup');
