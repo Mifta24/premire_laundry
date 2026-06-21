@@ -130,6 +130,42 @@ class CustomerProvider extends ChangeNotifier {
     }
   }
 
+  // Validasi voucher sebelum dipakai: harus milik user, masih 'active',
+  // dan belum kedaluwarsa. Dipanggil saat user menekan "Terapkan" di
+  // halaman buat pesanan, sebelum diskonnya dihitung & ditampilkan.
+  Future<VoucherModel?> validateVoucher({
+    required String userId,
+    required String code,
+  }) async {
+    _setError(null);
+    try {
+      final data = await _supabase
+          .from('vouchers')
+          .select()
+          .eq('code', code)
+          .eq('user_id', userId)
+          .maybeSingle();
+      if (data == null) {
+        _setError('Voucher tidak ditemukan atau bukan milik Anda');
+        return null;
+      }
+      final voucher = VoucherModel.fromJson(data);
+      if (voucher.status != 'active') {
+        _setError('Voucher sudah digunakan atau tidak aktif');
+        return null;
+      }
+      if (voucher.expiredAt != null &&
+          voucher.expiredAt!.isBefore(DateTime.now())) {
+        _setError('Voucher sudah kedaluwarsa');
+        return null;
+      }
+      return voucher;
+    } catch (e) {
+      _setError(e.toString());
+      return null;
+    }
+  }
+
   String _generateOrderCode() {
     final now = DateTime.now();
     final datePart =
@@ -180,12 +216,28 @@ class CustomerProvider extends ChangeNotifier {
         await _supabase.from('order_items').insert(itemsToInsert);
       }
 
-      // Mark voucher as used if applicable
+      // Tandai voucher terpakai, tapi sekaligus jadi pengecekan ulang
+      // (defense-in-depth) bahwa voucher itu memang milik customer ini,
+      // masih 'active', dan belum kedaluwarsa — meski UI sudah validasi
+      // lewat validateVoucher() sebelumnya. Kalau gagal (race condition,
+      // voucher dipakai dari device lain, dll), batalkan order supaya
+      // customer tidak terlanjur dibebani total tanpa diskon yang dijanjikan.
       if (voucherCode != null && voucherCode.isNotEmpty) {
-        await _supabase
+        final now = DateTime.now().toIso8601String();
+        final updated = await _supabase
             .from('vouchers')
             .update({'status': 'used', 'used_order_id': orderId})
-            .eq('code', voucherCode);
+            .eq('code', voucherCode)
+            .eq('user_id', customerId)
+            .eq('status', 'active')
+            .or('expired_at.is.null,expired_at.gt.$now')
+            .select();
+        if ((updated as List).isEmpty) {
+          await _supabase.from('order_items').delete().eq('order_id', orderId);
+          await _supabase.from('orders').delete().eq('id', orderId);
+          _setError('Voucher tidak valid, kedaluwarsa, atau sudah digunakan');
+          return null;
+        }
       }
 
       return orderId;

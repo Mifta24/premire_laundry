@@ -8,6 +8,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../models/address_model.dart';
 import '../../../models/laundry_service_model.dart';
+import '../../../models/voucher_model.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/customer_provider.dart';
 import '../../../widgets/app_button.dart';
@@ -35,6 +36,8 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
   double _subtotal = 0;
   bool _isLoading = false;
   bool _isSubmitting = false;
+  VoucherModel? _appliedVoucher;
+  bool _isValidatingVoucher = false;
 
   // Store location (from settings, defaults here)
   double _storeLat = -6.200000;
@@ -207,7 +210,40 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
     setState(() => _subtotal = sub);
   }
 
-  double get _total => _subtotal + _deliveryFee;
+  double get _discountAmount {
+    if (_appliedVoucher == null) return 0;
+    final percent = _appliedVoucher!.discountPercent ?? 0;
+    final discount = _subtotal * (percent / 100);
+    return discount > _subtotal ? _subtotal : discount;
+  }
+
+  double get _total => _subtotal - _discountAmount + _deliveryFee;
+
+  Future<void> _applyVoucher() async {
+    final code = _voucherController.text.trim();
+    if (code.isEmpty) return;
+    final userId = context.read<AuthProvider>().currentUser?.id ?? '';
+    final provider = context.read<CustomerProvider>();
+
+    setState(() => _isValidatingVoucher = true);
+    final voucher = await provider.validateVoucher(userId: userId, code: code);
+    if (!mounted) return;
+    setState(() {
+      _isValidatingVoucher = false;
+      _appliedVoucher = voucher;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          voucher != null
+              ? 'Voucher berhasil diterapkan'
+              : provider.error ?? 'Voucher tidak valid',
+        ),
+        backgroundColor: voucher != null ? AppColors.success : AppColors.error,
+      ),
+    );
+  }
 
   List<Map<String, dynamic>> get _orderItems {
     if (_orderType == 'kiloan') return [];
@@ -334,6 +370,16 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
       );
       return;
     }
+    if (_voucherController.text.trim().isNotEmpty && _appliedVoucher == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Tekan "Terapkan" untuk memvalidasi voucher, atau hapus kodenya',
+          ),
+        ),
+      );
+      return;
+    }
 
     setState(() => _isSubmitting = true);
     final authProvider = context.read<AuthProvider>();
@@ -360,9 +406,8 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
       deliveryFee: _deliveryFee,
       subtotal: _subtotal,
       total: _total,
-      voucherCode: _voucherController.text.trim().isNotEmpty
-          ? _voucherController.text.trim()
-          : null,
+      voucherCode: _appliedVoucher?.code,
+      discountAmount: _appliedVoucher != null ? _discountAmount : null,
       estimatedDistanceKm: distKm,
     );
 
@@ -520,9 +565,31 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
                   const SizedBox(height: 16),
                   TextFormField(
                     controller: _voucherController,
+                    onChanged: (_) {
+                      if (_appliedVoucher != null) {
+                        setState(() => _appliedVoucher = null);
+                      }
+                    },
                     decoration: InputDecoration(
                       labelText: 'Kode Voucher (opsional)',
                       prefixIcon: const Icon(Icons.card_giftcard),
+                      suffixIcon: Padding(
+                        padding: const EdgeInsets.all(6),
+                        child: _isValidatingVoucher
+                            ? const Padding(
+                                padding: EdgeInsets.all(10),
+                                child: SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                      strokeWidth: 2),
+                                ),
+                              )
+                            : TextButton(
+                                onPressed: _applyVoucher,
+                                child: const Text('Terapkan'),
+                              ),
+                      ),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -530,6 +597,24 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
                       fillColor: Colors.white,
                     ),
                   ),
+                  if (_appliedVoucher != null) ...[
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        const Icon(Icons.check_circle,
+                            color: AppColors.success, size: 16),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Diskon ${formatRupiah(_discountAmount)} diterapkan',
+                          style: const TextStyle(
+                            color: AppColors.success,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                   const SizedBox(height: 24),
                   AppButton(
                     onPressed: _submitOrder,
@@ -779,6 +864,8 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
           children: [
             _amountRow('Subtotal', formatRupiah(_subtotal)),
             _amountRow('Ongkir', formatRupiah(_deliveryFee)),
+            if (_appliedVoucher != null)
+              _amountRow('Diskon', '- ${formatRupiah(_discountAmount)}'),
             const Divider(),
             _amountRow('Total', formatRupiah(_total), bold: true),
           ],

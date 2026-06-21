@@ -223,7 +223,24 @@ class CourierProvider extends ChangeNotifier {
         }
       }
 
-      if (orderStatus != null) {
+      if (orderStatus == 'completed') {
+        // Edge function ini juga menambah loyalty points & men-generate
+        // voucher gratis tiap 10 order selesai, jadi delivery completion
+        // harus lewat sini, bukan update status langsung.
+        try {
+          await _supabase.functions.invoke(
+            'complete-order-generate-loyalty',
+            body: {'orderId': orderId},
+          );
+        } catch (e) {
+          // Tetap pindahkan status order meski pemrosesan loyalty gagal,
+          // supaya order tidak nyangkut di status sebelumnya.
+          await _supabase
+              .from('orders')
+              .update({'status': orderStatus})
+              .eq('id', orderId);
+        }
+      } else if (orderStatus != null) {
         await _supabase
             .from('orders')
             .update({'status': orderStatus})

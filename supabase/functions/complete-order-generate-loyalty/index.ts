@@ -19,6 +19,49 @@ serve(async (req: Request) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
+    // Verifikasi pemanggil: harus admin, atau kurir yang ditugaskan
+    // delivery untuk order ini. Tanpa ini, siapapun yang sudah login bisa
+    // memaksa order manapun jadi 'completed' dan memberi loyalty point ke
+    // customer lain hanya dengan menebak orderId.
+    const authClient = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      { global: { headers: { Authorization: req.headers.get("Authorization") ?? "" } } }
+    );
+    const { data: callerData, error: callerError } = await authClient.auth.getUser();
+    if (callerError || !callerData?.user) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { "Content-Type": "application/json" } }
+      );
+    }
+    const callerId = callerData.user.id;
+
+    const { data: callerProfile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("user_id", callerId)
+      .maybeSingle();
+
+    let isAuthorized = callerProfile?.role === "admin";
+    if (!isAuthorized) {
+      const { data: assignedTask } = await supabase
+        .from("courier_tasks")
+        .select("id")
+        .eq("order_id", orderId)
+        .eq("courier_id", callerId)
+        .eq("task_type", "delivery")
+        .maybeSingle();
+      isAuthorized = !!assignedTask;
+    }
+
+    if (!isAuthorized) {
+      return new Response(
+        JSON.stringify({ error: "Forbidden: bukan kurir/admin untuk order ini" }),
+        { status: 403, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
     // Ambil data order
     const { data: order, error: orderError } = await supabase
       .from("orders")
