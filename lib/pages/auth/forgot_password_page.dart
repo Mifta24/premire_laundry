@@ -31,8 +31,9 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
 
     setState(() => _isLoading = true);
     final authProvider = context.read<AuthProvider>();
-    final success = await authProvider
-        .sendPasswordResetEmail(_emailController.text.trim());
+    final success = await authProvider.sendPasswordResetEmail(
+      _emailController.text.trim(),
+    );
 
     if (!mounted) return;
     setState(() => _isLoading = false);
@@ -42,8 +43,9 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content:
-              Text(authProvider.error ?? 'Gagal mengirim tautan. Coba lagi.'),
+          content: Text(
+            authProvider.error ?? 'Gagal mengirim tautan. Coba lagi.',
+          ),
           backgroundColor: AppColors.error,
         ),
       );
@@ -65,8 +67,10 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                   alignment: Alignment.centerLeft,
                   child: IconButton(
                     onPressed: () => context.go('/login'),
-                    icon: const Icon(Icons.arrow_back,
-                        color: AppColors.primary),
+                    icon: const Icon(
+                      Icons.arrow_back,
+                      color: AppColors.primary,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -97,7 +101,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
                       decoration: InputDecoration(
-                        labelText: 'Email / No. HP',
+                        labelText: 'Email',
                         prefixIcon: const Icon(Icons.email_outlined),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -117,7 +121,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                   const SizedBox(height: 24),
                   AppButton(
                     onPressed: _handleSendLink,
-                    label: 'Kirim Kode',
+                    label: 'Kirim Tautan Reset',
                     isLoading: _isLoading,
                   ),
                 ] else

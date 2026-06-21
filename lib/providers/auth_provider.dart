@@ -196,7 +196,36 @@ class AuthProvider extends ChangeNotifier {
     _setLoading(true);
     _setError(null);
     try {
-      await _supabase.auth.resetPasswordForEmail(email);
+      await _supabase.auth.resetPasswordForEmail(
+        email,
+        redirectTo: 'premierlaundry://reset-password',
+      );
+      return true;
+    } on AuthException catch (e) {
+      _setError(e.message);
+      return false;
+    } catch (e) {
+      _setError('Terjadi kesalahan. Silakan coba lagi.');
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  Future<bool> updateRecoveredPassword(String newPassword) async {
+    _setLoading(true);
+    _setError(null);
+    try {
+      if (_supabase.auth.currentSession == null) {
+        _setError('Link reset password tidak valid atau sudah kedaluwarsa.');
+        return false;
+      }
+
+      await _supabase.auth.updateUser(UserAttributes(password: newPassword));
+      await _supabase.auth.signOut();
+      _currentUser = null;
+      _profile = null;
+      notifyListeners();
       return true;
     } on AuthException catch (e) {
       _setError(e.message);

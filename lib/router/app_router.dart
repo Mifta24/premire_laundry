@@ -6,6 +6,7 @@ import '../pages/auth/splash_page.dart';
 import '../pages/auth/login_page.dart';
 import '../pages/auth/register_page.dart';
 import '../pages/auth/forgot_password_page.dart';
+import '../pages/auth/reset_password_page.dart';
 import '../pages/customer/customer_home_page.dart';
 import '../pages/customer/order/create_order_page.dart';
 import '../pages/customer/order/order_detail_page.dart';
@@ -37,10 +38,15 @@ class AppRouter {
       navigatorKey: _rootNavigatorKey,
       initialLocation: '/splash',
       onException: (context, state, router) {
-        // Handle custom deep link scheme: premierlaundry://payment-success?orderId=xxx
+        // Handle custom deep link schemes, for example:
+        // premierlaundry://payment-success?orderId=xxx
+        // premierlaundry://reset-password
         final uri = state.uri;
         final orderId = uri.queryParameters['orderId'];
-        if (orderId != null && orderId.isNotEmpty) {
+        final deepLinkTarget = uri.host.isNotEmpty ? uri.host : uri.path;
+        if (deepLinkTarget == 'reset-password') {
+          router.go('/reset-password');
+        } else if (orderId != null && orderId.isNotEmpty) {
           router.go('/customer/order/$orderId');
         } else {
           router.go('/customer/home');
@@ -49,9 +55,11 @@ class AppRouter {
       redirect: (BuildContext ctx, GoRouterState state) {
         final session = Supabase.instance.client.auth.currentSession;
         final isAuthenticated = session != null;
-        final isAuthRoute = state.matchedLocation == '/login' ||
+        final isAuthRoute =
+            state.matchedLocation == '/login' ||
             state.matchedLocation == '/register' ||
             state.matchedLocation == '/forgot-password' ||
+            state.matchedLocation == '/reset-password' ||
             state.matchedLocation == '/splash';
 
         if (!isAuthenticated && !isAuthRoute) {
@@ -64,10 +72,7 @@ class AppRouter {
           path: '/splash',
           builder: (context, state) => const SplashPage(),
         ),
-        GoRoute(
-          path: '/login',
-          builder: (context, state) => const LoginPage(),
-        ),
+        GoRoute(path: '/login', builder: (context, state) => const LoginPage()),
         GoRoute(
           path: '/register',
           builder: (context, state) => const RegisterPage(),
@@ -75,6 +80,10 @@ class AppRouter {
         GoRoute(
           path: '/forgot-password',
           builder: (context, state) => const ForgotPasswordPage(),
+        ),
+        GoRoute(
+          path: '/reset-password',
+          builder: (context, state) => const ResetPasswordPage(),
         ),
         // Customer routes
         GoRoute(

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
@@ -15,7 +17,6 @@ import 'providers/courier_provider.dart';
 import 'providers/customer_provider.dart';
 import 'router/app_router.dart';
 import 'core/constants/supabase_keys.dart';
-
 
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   // Handle background messages
@@ -63,11 +64,24 @@ class PremierLaundryApp extends StatefulWidget {
 
 class _PremierLaundryAppState extends State<PremierLaundryApp> {
   late final GoRouter _router;
+  StreamSubscription<AuthState>? _authStateSubscription;
 
   @override
   void initState() {
     super.initState();
     _router = AppRouter.createRouter(context);
+    _authStateSubscription = Supabase.instance.client.auth.onAuthStateChange
+        .listen((data) {
+          if (data.event == AuthChangeEvent.passwordRecovery) {
+            _router.go('/reset-password');
+          }
+        });
+  }
+
+  @override
+  void dispose() {
+    _authStateSubscription?.cancel();
+    super.dispose();
   }
 
   @override
