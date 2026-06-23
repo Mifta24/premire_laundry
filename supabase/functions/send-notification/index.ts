@@ -47,6 +47,17 @@ serve(async (req: Request) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
+    // Simpan riwayat notifikasi in-app, terlepas dari ada device aktif atau
+    // tidak, supaya tetap muncul di halaman notifikasi walau push gagal.
+    const { error: insertError } = await supabase.from("notifications").insert({
+      user_id: userId,
+      title,
+      body,
+      type: data?.type ?? null,
+      data: data ?? {},
+    });
+    if (insertError) console.error("Gagal simpan notifications:", insertError);
+
     const { data: devices, error } = await supabase
       .from("user_devices")
       .select("fcm_token")

@@ -3,6 +3,8 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
 import '../../providers/admin_provider.dart';
+import '../../providers/auth_provider.dart';
+import '../../providers/notification_provider.dart';
 import 'account/admin_account_page.dart';
 import 'courier/admin_courier_list_page.dart';
 import 'dashboard/admin_dashboard_page.dart';
@@ -28,13 +30,14 @@ class _AdminHomePageState extends State<AdminHomePage> {
   @override
   void dispose() {
     context.read<AdminProvider>().unsubscribeFromRealtime();
+    context.read<NotificationProvider>().unsubscribeFromRealtime();
     super.dispose();
   }
 
   Future<void> _loadAll() async {
     final provider = context.read<AdminProvider>();
     provider.subscribeToRealtime();
-    await Future.wait([
+    final futures = [
       provider.loadAllOrders(),
       provider.loadPendingPayments(),
       provider.loadPaidPayments(),
@@ -42,7 +45,14 @@ class _AdminHomePageState extends State<AdminHomePage> {
       provider.loadCouriers(),
       provider.loadDeliveryFees(),
       provider.loadActiveCourierTasks(),
-    ]);
+    ];
+    final userId = context.read<AuthProvider>().currentUser?.id;
+    if (userId != null) {
+      final notifProvider = context.read<NotificationProvider>();
+      notifProvider.subscribeToRealtime(userId);
+      futures.add(notifProvider.loadNotifications(userId));
+    }
+    await Future.wait(futures);
   }
 
   final List<String> _titles = [
@@ -57,6 +67,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
   Widget build(BuildContext context) {
     final provider = context.watch<AdminProvider>();
     final pendingCount = provider.pendingPayments.length;
+    final unreadCount = context.watch<NotificationProvider>().unreadCount;
 
     final pages = [
       AdminDashboardPage(
@@ -78,8 +89,26 @@ class _AdminHomePageState extends State<AdminHomePage> {
         actions: [
           if (_currentIndex == 0)
             IconButton(
-              icon: const Icon(Icons.notifications_outlined),
-              onPressed: () {},
+              icon: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  const Icon(Icons.notifications_outlined),
+                  if (unreadCount > 0)
+                    Positioned(
+                      right: -2,
+                      top: -2,
+                      child: CircleAvatar(
+                        radius: 8,
+                        backgroundColor: AppColors.error,
+                        child: Text(
+                          '$unreadCount',
+                          style: const TextStyle(fontSize: 10, color: Colors.white),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              onPressed: () => context.push('/notifications'),
             ),
         ],
       ),

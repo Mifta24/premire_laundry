@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/courier_task_model.dart';
+import '../core/services/notification_service.dart';
 
 class CourierProvider extends ChangeNotifier {
   final _supabase = Supabase.instance.client;
@@ -181,6 +182,41 @@ class CourierProvider extends ChangeNotifier {
     _subscribedCourierId = null;
   }
 
+  // Pesan untuk customer tiap kali kurir mengubah status tugas. 'completed'
+  // tidak masuk sini karena sudah dinotif lewat complete-order-generate-loyalty.
+  static const Map<String, String> _orderStatusMessages = {
+    'waiting_pickup': 'Kurir dalam perjalanan menjemput laundry Anda.',
+    'picked_up': 'Laundry Anda telah dijemput kurir.',
+    'out_for_delivery': 'Laundry Anda sedang diantar kurir.',
+  };
+
+  Future<void> _notifyCustomerOrderStatus(
+    String orderId,
+    String orderStatus,
+  ) async {
+    final message = _orderStatusMessages[orderStatus];
+    if (message == null) return;
+    try {
+      final order = await _supabase
+          .from('orders')
+          .select('customer_id, order_code')
+          .eq('id', orderId)
+          .single();
+      await NotificationService.sendToUser(
+        userId: order['customer_id'] as String,
+        title: 'Pesanan ${order['order_code']}',
+        body: message,
+        data: {
+          'orderId': orderId,
+          'type': 'order_status',
+          'status': orderStatus,
+        },
+      );
+    } catch (e) {
+      debugPrint('Gagal mengirim notifikasi status order: $e');
+    }
+  }
+
   Future<bool> updateTaskStatus(
     String taskId,
     String status,
@@ -245,6 +281,7 @@ class CourierProvider extends ChangeNotifier {
             .from('orders')
             .update({'status': orderStatus})
             .eq('id', orderId);
+        await _notifyCustomerOrderStatus(orderId, orderStatus);
       }
 
       return true;

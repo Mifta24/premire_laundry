@@ -8,6 +8,7 @@ import '../models/laundry_service_model.dart';
 import '../models/profile_model.dart';
 import '../models/delivery_fee_model.dart';
 import '../models/courier_task_model.dart';
+import '../core/services/notification_service.dart';
 
 class AdminProvider extends ChangeNotifier {
   final _supabase = Supabase.instance.client;
@@ -302,6 +303,65 @@ class AdminProvider extends ChangeNotifier {
     }
   }
 
+  // Pesan untuk customer tiap kali admin memajukan status order. Status yang
+  // tidak ada di sini (mis. 'waiting_weight_input') tidak cukup penting
+  // untuk customer sehingga tidak dikirim notif.
+  static const Map<String, String> _statusMessages = {
+    'waiting_payment': 'Pesanan Anda siap dibayar, silakan lakukan pembayaran.',
+    'waiting_pickup': 'Pesanan Anda akan segera dijemput kurir.',
+    'cancelled': 'Pesanan Anda telah dibatalkan.',
+    'received_by_store': 'Laundry Anda sudah diterima di toko.',
+    'washing': 'Laundry Anda sedang dicuci.',
+    'ironing': 'Laundry Anda sedang disetrika.',
+    'ready_to_deliver': 'Laundry Anda siap diantar.',
+  };
+
+  Future<void> _notifyCustomerOrderStatus(String orderId, String status) async {
+    final message = _statusMessages[status];
+    if (message == null) return;
+    try {
+      final order = await _supabase
+          .from('orders')
+          .select('customer_id, order_code')
+          .eq('id', orderId)
+          .single();
+      await NotificationService.sendToUser(
+        userId: order['customer_id'] as String,
+        title: 'Pesanan ${order['order_code']}',
+        body: message,
+        data: {'orderId': orderId, 'type': 'order_status', 'status': status},
+      );
+    } catch (e) {
+      debugPrint('Gagal mengirim notifikasi status order: $e');
+    }
+  }
+
+  Future<void> _notifyCustomerPaymentValidated(
+    String orderId,
+    bool isValid,
+  ) async {
+    try {
+      final order = await _supabase
+          .from('orders')
+          .select('customer_id, order_code')
+          .eq('id', orderId)
+          .single();
+      await NotificationService.sendToUser(
+        userId: order['customer_id'] as String,
+        title: 'Pesanan ${order['order_code']}',
+        body: isValid
+            ? 'Pembayaran Anda telah dikonfirmasi. Laundry segera diproses!'
+            : 'Pembayaran Anda ditolak. Silakan unggah ulang bukti pembayaran.',
+        data: {
+          'orderId': orderId,
+          'type': isValid ? 'payment_success' : 'payment_rejected',
+        },
+      );
+    } catch (e) {
+      debugPrint('Gagal mengirim notifikasi validasi pembayaran: $e');
+    }
+  }
+
   Future<bool> updateOrderStatus(String orderId, String status) async {
     _setLoading(true);
     _setError(null);
@@ -311,6 +371,7 @@ class AdminProvider extends ChangeNotifier {
           .update({'status': status})
           .eq('id', orderId);
 
+      await _notifyCustomerOrderStatus(orderId, status);
       await loadAllOrders();
       return true;
     } catch (e) {
@@ -355,6 +416,7 @@ class AdminProvider extends ChangeNotifier {
             .from('orders')
             .update({'status': 'waiting_pickup'})
             .eq('id', orderId);
+        await _notifyCustomerOrderStatus(orderId, 'waiting_pickup');
       }
 
       await loadAllOrders();
@@ -524,6 +586,7 @@ class AdminProvider extends ChangeNotifier {
             .eq('id', orderId);
       }
 
+      await _notifyCustomerPaymentValidated(orderId, isValid);
       await loadPendingPayments();
       return true;
     } catch (e) {
@@ -608,6 +671,7 @@ class AdminProvider extends ChangeNotifier {
           })
           .eq('id', orderId);
 
+      await _notifyCustomerOrderStatus(orderId, 'waiting_payment');
       await loadAllOrders();
       return true;
     } catch (e) {

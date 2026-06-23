@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/customer_provider.dart';
+import '../../providers/notification_provider.dart';
 import '../../widgets/order_card.dart';
 import 'order/order_history_page.dart';
 import 'voucher/voucher_list_page.dart';
@@ -28,6 +29,7 @@ class _CustomerHomePageState extends State<CustomerHomePage> {
   @override
   void dispose() {
     context.read<CustomerProvider>().unsubscribeFromRealtime();
+    context.read<NotificationProvider>().unsubscribeFromRealtime();
     super.dispose();
   }
 
@@ -36,9 +38,12 @@ class _CustomerHomePageState extends State<CustomerHomePage> {
     if (userId != null) {
       final provider = context.read<CustomerProvider>();
       provider.subscribeToRealtime(userId);
+      final notifProvider = context.read<NotificationProvider>();
+      notifProvider.subscribeToRealtime(userId);
       await Future.wait([
         provider.loadOrders(userId),
         provider.loadLoyalty(userId),
+        notifProvider.loadNotifications(userId),
       ]);
     }
   }
@@ -132,6 +137,7 @@ class _CustomerHomePageState extends State<CustomerHomePage> {
   }
 
   Widget _buildHomeDashboard(BuildContext context, String name) {
+    final unreadCount = context.watch<NotificationProvider>().unreadCount;
     final provider = context.watch<CustomerProvider>();
     final activeOrder = provider.orders
         .where((o) => o.status != 'completed' && o.status != 'cancelled')
@@ -187,11 +193,29 @@ class _CustomerHomePageState extends State<CustomerHomePage> {
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(
-                        Icons.notifications_outlined,
-                        color: Colors.black87,
+                      icon: Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          const Icon(
+                            Icons.notifications_outlined,
+                            color: Colors.black87,
+                          ),
+                          if (unreadCount > 0)
+                            Positioned(
+                              right: -2,
+                              top: -2,
+                              child: CircleAvatar(
+                                radius: 8,
+                                backgroundColor: AppColors.error,
+                                child: Text(
+                                  '$unreadCount',
+                                  style: const TextStyle(fontSize: 10, color: Colors.white),
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
-                      onPressed: () {},
+                      onPressed: () => context.push('/notifications'),
                     ),
                   ],
                 ),

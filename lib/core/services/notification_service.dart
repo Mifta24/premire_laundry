@@ -174,6 +174,32 @@ class NotificationService {
     return await _messaging.getInitialMessage();
   }
 
+  // Panggil edge function send-notification: insert ke tabel notifications
+  // (in-app) + kirim push FCM kalau device user aktif. Dipakai dari provider
+  // mana pun yang perlu memberi tahu user lain (admin/customer/courier)
+  // setelah sebuah aksi terjadi. Gagal kirim notif tidak boleh menggagalkan
+  // aksi utama, jadi error di sini cukup di-log.
+  static Future<void> sendToUser({
+    required String userId,
+    required String title,
+    required String body,
+    Map<String, dynamic>? data,
+  }) async {
+    try {
+      await Supabase.instance.client.functions.invoke(
+        'send-notification',
+        body: {
+          'userId': userId,
+          'title': title,
+          'body': body,
+          if (data != null) 'data': data,
+        },
+      );
+    } catch (e) {
+      debugPrint('Error sending notification: $e');
+    }
+  }
+
   // Status aktif/nonaktif notifikasi untuk device ini (berdasarkan token saat ini)
   Future<bool> isNotificationsEnabled(String userId) async {
     try {

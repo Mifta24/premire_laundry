@@ -6,6 +6,7 @@ import '../models/order_model.dart';
 import '../models/address_model.dart';
 import '../models/voucher_model.dart';
 import '../models/loyalty_model.dart';
+import '../core/services/notification_service.dart';
 
 class CustomerProvider extends ChangeNotifier {
   final _supabase = Supabase.instance.client;
@@ -166,6 +167,28 @@ class CustomerProvider extends ChangeNotifier {
     }
   }
 
+  // Beri tahu semua admin tiap kali ada order baru, supaya bisa segera
+  // diproses. Tidak di-await oleh caller karena gagal kirim notif tidak
+  // boleh menggagalkan pembuatan order.
+  Future<void> _notifyAdminsNewOrder(String orderId, String orderCode) async {
+    try {
+      final admins = await _supabase
+          .from('profiles')
+          .select('user_id')
+          .eq('role', 'admin');
+      for (final admin in admins as List) {
+        await NotificationService.sendToUser(
+          userId: admin['user_id'] as String,
+          title: 'Pesanan Baru',
+          body: 'Pesanan $orderCode menunggu diproses.',
+          data: {'orderId': orderId, 'type': 'new_order'},
+        );
+      }
+    } catch (e) {
+      debugPrint('Gagal mengirim notifikasi order baru ke admin: $e');
+    }
+  }
+
   String _generateOrderCode() {
     final now = DateTime.now();
     final datePart =
@@ -239,6 +262,8 @@ class CustomerProvider extends ChangeNotifier {
           return null;
         }
       }
+
+      await _notifyAdminsNewOrder(orderId, orderCode);
 
       return orderId;
     } catch (e) {

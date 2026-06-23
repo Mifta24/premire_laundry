@@ -29,6 +29,7 @@ import '../pages/admin/payment/admin_payment_detail_page.dart';
 import '../pages/admin/service/manage_services_page.dart';
 import '../pages/admin/delivery/delivery_fee_page.dart';
 import '../pages/admin/settings/admin_settings_page.dart';
+import '../pages/shared/notifications_page.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 
@@ -73,6 +74,10 @@ class AppRouter {
           builder: (context, state) => const SplashPage(),
         ),
         GoRoute(path: '/login', builder: (context, state) => const LoginPage()),
+        GoRoute(
+          path: '/notifications',
+          builder: (context, state) => const NotificationsPage(),
+        ),
         GoRoute(
           path: '/register',
           builder: (context, state) => const RegisterPage(),

@@ -15,6 +15,7 @@ import 'providers/admin_provider.dart';
 import 'providers/auth_provider.dart';
 import 'providers/courier_provider.dart';
 import 'providers/customer_provider.dart';
+import 'providers/notification_provider.dart';
 import 'router/app_router.dart';
 import 'core/constants/supabase_keys.dart';
 
@@ -49,6 +50,7 @@ Future<void> main() async {
         ChangeNotifierProvider(create: (_) => CustomerProvider()),
         ChangeNotifierProvider(create: (_) => CourierProvider()),
         ChangeNotifierProvider(create: (_) => AdminProvider()),
+        ChangeNotifierProvider(create: (_) => NotificationProvider()),
       ],
       child: const PremierLaundryApp(),
     ),

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/courier_provider.dart';
+import '../../providers/notification_provider.dart';
 import 'courier_account_page.dart';
 import 'courier_dashboard_page.dart';
 import 'courier_history_page.dart';
@@ -29,6 +31,7 @@ class _CourierHomePageState extends State<CourierHomePage> {
   @override
   void dispose() {
     context.read<CourierProvider>().unsubscribeFromRealtime();
+    context.read<NotificationProvider>().unsubscribeFromRealtime();
     super.dispose();
   }
 
@@ -37,12 +40,18 @@ class _CourierHomePageState extends State<CourierHomePage> {
     if (userId != null) {
       final provider = context.read<CourierProvider>();
       provider.subscribeToRealtime(userId);
-      await provider.loadTasks(userId);
+      final notifProvider = context.read<NotificationProvider>();
+      notifProvider.subscribeToRealtime(userId);
+      await Future.wait([
+        provider.loadTasks(userId),
+        notifProvider.loadNotifications(userId),
+      ]);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final unreadCount = context.watch<NotificationProvider>().unreadCount;
     final pages = [
       CourierDashboardPage(
         onNavigateTab: (i) => setState(() => _currentIndex = i),
@@ -64,8 +73,26 @@ class _CourierHomePageState extends State<CourierHomePage> {
         title: Text(_titles[_currentIndex]),
         actions: [
           IconButton(
-            icon: const Icon(Icons.notifications_outlined),
-            onPressed: () {},
+            icon: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                const Icon(Icons.notifications_outlined),
+                if (unreadCount > 0)
+                  Positioned(
+                    right: -2,
+                    top: -2,
+                    child: CircleAvatar(
+                      radius: 8,
+                      backgroundColor: AppColors.error,
+                      child: Text(
+                        '$unreadCount',
+                        style: const TextStyle(fontSize: 10, color: Colors.white),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            onPressed: () => context.push('/notifications'),
           ),
         ],
       ),
