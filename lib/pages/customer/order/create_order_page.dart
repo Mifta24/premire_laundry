@@ -60,6 +60,18 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
     ].join('|');
   }
 
+  String _deliveryFeeKey(Map<String, dynamic> fee) {
+    final minKm = (fee['min_distance_km'] as num?)?.toDouble() ?? 0;
+    final maxKm = (fee['max_distance_km'] as num?)?.toDouble();
+    final feeAmount = (fee['fee'] as num?)?.toDouble() ?? 0;
+    return [
+      (fee['name'] as String? ?? '').trim().toLowerCase(),
+      minKm.toStringAsFixed(2),
+      maxKm?.toStringAsFixed(2) ?? 'open',
+      feeAmount.toStringAsFixed(2),
+    ].join('|');
+  }
+
   @override
   void initState() {
     super.initState();
@@ -98,6 +110,7 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
             .from('addresses')
             .select()
             .eq('user_id', userId)
+            .isFilter('deleted_at', null)
             .order('is_default', ascending: false);
         _addresses = _uniqueBy(
           (addrData as List<dynamic>).map(
@@ -119,7 +132,10 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
           .select()
           .eq('is_active', true)
           .order('min_distance_km');
-      _deliveryFees = (feesData as List<dynamic>).cast<Map<String, dynamic>>();
+      _deliveryFees = _uniqueBy(
+        (feesData as List<dynamic>).cast<Map<String, dynamic>>(),
+        _deliveryFeeKey,
+      );
 
       // Load store location from settings
       try {
@@ -213,8 +229,15 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
   double get _discountAmount {
     if (_appliedVoucher == null) return 0;
     final percent = _appliedVoucher!.discountPercent ?? 0;
-    final discount = _subtotal * (percent / 100);
-    return discount > _subtotal ? _subtotal : discount;
+    final rawDiscount = _subtotal * (percent / 100);
+    final cappedBySubtotal = rawDiscount > _subtotal ? _subtotal : rawDiscount;
+    final maxDiscount = _appliedVoucher!.maxDiscount;
+    if (maxDiscount != null &&
+        maxDiscount > 0 &&
+        cappedBySubtotal > maxDiscount) {
+      return maxDiscount;
+    }
+    return cappedBySubtotal;
   }
 
   double get _total => _subtotal - _discountAmount + _deliveryFee;
@@ -222,6 +245,15 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
   Future<void> _applyVoucher() async {
     final code = _voucherController.text.trim();
     if (code.isEmpty) return;
+    if (_subtotal <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Voucher bisa dipakai setelah total layanan tersedia'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
     final userId = context.read<AuthProvider>().currentUser?.id ?? '';
     final provider = context.read<CustomerProvider>();
 
@@ -282,9 +314,10 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Pilih Alamat',
-                      style: TextStyle(
-                          fontSize: 16, fontWeight: FontWeight.bold)),
+                  const Text(
+                    'Pilih Alamat',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
                   TextButton.icon(
                     onPressed: () async {
                       Navigator.pop(ctx);
@@ -300,7 +333,8 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
               Expanded(
                 child: _addresses.isEmpty
                     ? const Center(
-                        child: Text('Belum ada alamat. Tambahkan alamat baru.'))
+                        child: Text('Belum ada alamat. Tambahkan alamat baru.'),
+                      )
                     : ListView.builder(
                         controller: scrollController,
                         itemCount: _addresses.length,
@@ -325,17 +359,22 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
                                     ? AppColors.primary
                                     : Colors.grey,
                               ),
-                              title: Text(addr.label,
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.bold)),
+                              title: Text(
+                                addr.label,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                               subtitle: Text(
                                 addr.addressText,
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
                               ),
                               trailing: isSelected
-                                  ? const Icon(Icons.check_circle,
-                                      color: AppColors.primary)
+                                  ? const Icon(
+                                      Icons.check_circle,
+                                      color: AppColors.primary,
+                                    )
                                   : null,
                               onTap: () => Navigator.pop(ctx, addr),
                             ),
@@ -475,8 +514,10 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
       final paymentUrl = response.data?['invoiceUrl'] as String?;
       if (paymentUrl != null) {
         final uri = Uri.parse(paymentUrl);
-        final launched =
-            await launchUrl(uri, mode: LaunchMode.externalApplication);
+        final launched = await launchUrl(
+          uri,
+          mode: LaunchMode.externalApplication,
+        );
         if (!launched) {
           await launchUrl(uri, mode: LaunchMode.inAppWebView);
         }
@@ -582,7 +623,8 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
                                   width: 18,
                                   height: 18,
                                   child: CircularProgressIndicator(
-                                      strokeWidth: 2),
+                                    strokeWidth: 2,
+                                  ),
                                 ),
                               )
                             : TextButton(
@@ -601,8 +643,11 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        const Icon(Icons.check_circle,
-                            color: AppColors.success, size: 16),
+                        const Icon(
+                          Icons.check_circle,
+                          color: AppColors.success,
+                          size: 16,
+                        ),
                         const SizedBox(width: 6),
                         Text(
                           'Diskon ${formatRupiah(_discountAmount)} diterapkan',
@@ -634,8 +679,10 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
   }
 
   Widget _sectionTitle(String title) {
-    return Text(title,
-        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold));
+    return Text(
+      title,
+      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+    );
   }
 
   Widget _buildTypeToggle() {
@@ -650,7 +697,8 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
           Expanded(child: _typeButton('kiloan', 'Laundry Kiloan', Icons.scale)),
           const SizedBox(width: 4),
           Expanded(
-              child: _typeButton('satuan', 'Laundry Satuan', Icons.checkroom)),
+            child: _typeButton('satuan', 'Laundry Satuan', Icons.checkroom),
+          ),
         ],
       ),
     );
@@ -747,9 +795,13 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
                         }
                       : null,
                 ),
-                Text('$qty',
-                    style: const TextStyle(
-                        fontSize: 16, fontWeight: FontWeight.bold)),
+                Text(
+                  '$qty',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
                 IconButton(
                   icon: const Icon(Icons.add_circle_outline),
                   color: AppColors.primary,
@@ -801,17 +853,23 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Estimasi Ongkir',
-                      style: TextStyle(fontWeight: FontWeight.w600)),
-                  Text('Estimasi waktu jemput: 1-2 jam',
-                      style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                  const Text(
+                    'Estimasi Ongkir',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  Text(
+                    'Estimasi waktu jemput: 1-2 jam',
+                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  ),
                 ],
               ),
             ),
             Text(
               formatRupiah(_deliveryFee),
               style: const TextStyle(
-                  fontWeight: FontWeight.bold, color: AppColors.primary),
+                fontWeight: FontWeight.bold,
+                color: AppColors.primary,
+              ),
             ),
           ],
         ),
@@ -848,8 +906,10 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
         ),
         subtitle: Padding(
           padding: const EdgeInsets.only(left: 28),
-          child: Text(subtitle,
-              style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+          child: Text(
+            subtitle,
+            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+          ),
         ),
       ),
     );

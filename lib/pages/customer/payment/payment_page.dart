@@ -20,6 +20,7 @@ class PaymentPage extends StatefulWidget {
 class _PaymentPageState extends State<PaymentPage> {
   OrderModel? _order;
   bool _isLoading = true;
+  bool _isApplyingVoucher = false;
   final _voucherController = TextEditingController();
 
   @override
@@ -68,8 +69,9 @@ class _PaymentPageState extends State<PaymentPage> {
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-            content: Text(provider.error ?? 'Gagal membuat pembayaran'),
-            backgroundColor: AppColors.error),
+          content: Text(provider.error ?? 'Gagal membuat pembayaran'),
+          backgroundColor: AppColors.error,
+        ),
       );
     }
   }
@@ -91,7 +93,10 @@ class _PaymentPageState extends State<PaymentPage> {
       final paymentUrl = response.data?['invoiceUrl'] as String?;
       if (paymentUrl != null) {
         final uri = Uri.parse(paymentUrl);
-        final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+        final launched = await launchUrl(
+          uri,
+          mode: LaunchMode.externalApplication,
+        );
         if (!launched) {
           await launchUrl(uri, mode: LaunchMode.inAppWebView);
         }
@@ -100,12 +105,51 @@ class _PaymentPageState extends State<PaymentPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text('Gagal membuka halaman pembayaran: $e'),
-              backgroundColor: AppColors.error),
+            content: Text('Gagal membuka halaman pembayaran: $e'),
+            backgroundColor: AppColors.error,
+          ),
         );
       }
     } finally {
       setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _applyVoucher() async {
+    final code = _voucherController.text.trim();
+    if (code.isEmpty || _order == null) return;
+
+    final userId = context.read<AuthProvider>().currentUser?.id ?? '';
+    final provider = context.read<CustomerProvider>();
+
+    setState(() => _isApplyingVoucher = true);
+    final ok = await provider.applyVoucherToOrder(
+      orderId: widget.orderId,
+      customerId: userId,
+      code: code,
+    );
+    if (!mounted) return;
+
+    if (ok) {
+      _voucherController.clear();
+      await _loadOrder();
+    } else {
+      setState(() => _isApplyingVoucher = false);
+    }
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          ok
+              ? 'Voucher berhasil dipakai'
+              : provider.error ?? 'Voucher tidak valid',
+        ),
+        backgroundColor: ok ? AppColors.success : AppColors.error,
+      ),
+    );
+    if (mounted) {
+      setState(() => _isApplyingVoucher = false);
     }
   }
 
@@ -152,7 +196,8 @@ class _PaymentPageState extends State<PaymentPage> {
           children: [
             Card(
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
+                borderRadius: BorderRadius.circular(12),
+              ),
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
@@ -161,16 +206,19 @@ class _PaymentPageState extends State<PaymentPage> {
                     Text(
                       _order!.orderCode,
                       style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.primary),
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primary,
+                      ),
                     ),
                     const Divider(height: 20),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text('Total Pembayaran',
-                            style: TextStyle(fontSize: 15)),
+                        const Text(
+                          'Total Pembayaran',
+                          style: TextStyle(fontSize: 15),
+                        ),
                         Text(
                           formatRupiah(_order!.totalAmount),
                           style: const TextStyle(
@@ -181,13 +229,31 @@ class _PaymentPageState extends State<PaymentPage> {
                         ),
                       ],
                     ),
+                    if (_order!.discountAmount > 0) ...[
+                      const SizedBox(height: 8),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('Diskon Voucher'),
+                          Text(
+                            '- ${formatRupiah(_order!.discountAmount)}',
+                            style: const TextStyle(
+                              color: AppColors.success,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ],
                 ),
               ),
             ),
             const SizedBox(height: 24),
-            const Text('Pilih Metode Pembayaran',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            const Text(
+              'Pilih Metode Pembayaran',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 12),
             _paymentMethodCard(
               icon: Icons.qr_code,
@@ -204,22 +270,38 @@ class _PaymentPageState extends State<PaymentPage> {
               onTap: _payWithXendit,
               isLoading: _isLoading,
             ),
-            const SizedBox(height: 24),
-            TextFormField(
-              controller: _voucherController,
-              decoration: InputDecoration(
-                labelText: 'Kode Voucher (opsional)',
-                prefixIcon: const Icon(Icons.card_giftcard),
-                border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12)),
-                filled: true,
-                fillColor: Colors.white,
-                suffixIcon: TextButton(
-                  onPressed: () {},
-                  child: const Text('Pakai'),
+            if (_order!.paymentStatus == 'pending' &&
+                _order!.discountAmount <= 0) ...[
+              const SizedBox(height: 24),
+              TextFormField(
+                controller: _voucherController,
+                decoration: InputDecoration(
+                  labelText: 'Kode Voucher (opsional)',
+                  prefixIcon: const Icon(Icons.card_giftcard),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  filled: true,
+                  fillColor: Colors.white,
+                  suffixIcon: Padding(
+                    padding: const EdgeInsets.all(6),
+                    child: _isApplyingVoucher
+                        ? const Padding(
+                            padding: EdgeInsets.all(10),
+                            child: SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                          )
+                        : TextButton(
+                            onPressed: _applyVoucher,
+                            child: const Text('Pakai'),
+                          ),
+                  ),
                 ),
               ),
-            ),
+            ],
           ],
         ),
       ),
@@ -236,8 +318,7 @@ class _PaymentPageState extends State<PaymentPage> {
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: ListTile(
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         leading: Container(
           width: 48,
           height: 48,
@@ -247,10 +328,11 @@ class _PaymentPageState extends State<PaymentPage> {
           ),
           child: Icon(icon, color: AppColors.primary),
         ),
-        title: Text(title,
-            style: const TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: Text(subtitle,
-            style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+        subtitle: Text(
+          subtitle,
+          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+        ),
         trailing: isLoading
             ? const SizedBox(
                 width: 20,

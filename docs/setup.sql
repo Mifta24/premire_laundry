@@ -45,6 +45,7 @@ create table if not exists addresses (
   longitude      double precision,
   notes          text,
   is_default     boolean default false,
+  deleted_at     timestamptz,
   created_at     timestamptz default now(),
   updated_at     timestamptz default now()
 );
@@ -254,7 +255,56 @@ create table if not exists settings (
 alter table settings      add column if not exists is_public boolean default true;
 alter table profiles      add column if not exists avatar_url text;
 alter table courier_tasks add column if not exists completed_at timestamptz;
+alter table addresses     add column if not exists deleted_at timestamptz;
 
+update payments
+set paid_at = coalesce(updated_at, created_at, now())
+where status = 'paid'
+  and paid_at is null;
+
+-- Bersihkan data master yang terlanjur dobel sebelum unique index dibuat.
+with duplicate_services as (
+  select
+    id,
+    first_value(id) over (
+      partition by lower(btrim(name)), service_type, price, lower(btrim(unit))
+      order by created_at, id
+    ) as keep_id
+  from laundry_services
+)
+update order_items oi
+set service_id = duplicate_services.keep_id
+from duplicate_services
+where oi.service_id = duplicate_services.id
+  and duplicate_services.id <> duplicate_services.keep_id;
+
+with duplicate_services as (
+  select
+    id,
+    first_value(id) over (
+      partition by lower(btrim(name)), service_type, price, lower(btrim(unit))
+      order by created_at, id
+    ) as keep_id
+  from laundry_services
+)
+delete from laundry_services ls
+using duplicate_services
+where ls.id = duplicate_services.id
+  and duplicate_services.id <> duplicate_services.keep_id;
+
+with duplicate_fees as (
+  select
+    id,
+    row_number() over (
+      partition by lower(btrim(name)), min_distance_km, coalesce(max_distance_km, -1), fee
+      order by is_active desc, created_at, id
+    ) as rn
+  from delivery_fees
+)
+delete from delivery_fees df
+using duplicate_fees
+where df.id = duplicate_fees.id
+  and duplicate_fees.rn > 1;
 
 -- =============================================================================
 -- SECTION 3: INDEXES (performance)
@@ -262,6 +312,7 @@ alter table courier_tasks add column if not exists completed_at timestamptz;
 
 create index if not exists idx_profiles_user_id          on profiles(user_id);
 create index if not exists idx_addresses_user_id         on addresses(user_id);
+create index if not exists idx_addresses_user_active     on addresses(user_id) where deleted_at is null;
 create index if not exists idx_orders_customer_id        on orders(customer_id);
 create index if not exists idx_orders_status             on orders(status);
 create index if not exists idx_orders_payment_status     on orders(payment_status);
@@ -276,6 +327,10 @@ create index if not exists idx_user_devices_user_id      on user_devices(user_id
 create index if not exists idx_vouchers_user_id          on vouchers(user_id);
 create index if not exists idx_vouchers_code             on vouchers(code);
 create index if not exists idx_loyalty_points_user_id    on loyalty_points(user_id);
+create unique index if not exists uniq_laundry_services_business_identity
+  on laundry_services (lower(btrim(name)), service_type, price, lower(btrim(unit)));
+create unique index if not exists uniq_delivery_fees_business_identity
+  on delivery_fees (lower(btrim(name)), min_distance_km, coalesce(max_distance_km, -1), fee);
 
 
 -- =============================================================================

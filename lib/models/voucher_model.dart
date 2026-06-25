@@ -4,6 +4,7 @@ class VoucherModel {
   final String code;
   final String type;
   final double? discountPercent;
+  final double? maxDiscount;
   final String status;
   final DateTime? expiredAt;
   final String? usedOrderId;
@@ -14,6 +15,7 @@ class VoucherModel {
     required this.code,
     required this.type,
     this.discountPercent,
+    this.maxDiscount,
     required this.status,
     this.expiredAt,
     this.usedOrderId,
@@ -27,6 +29,9 @@ class VoucherModel {
       type: json['type'] as String? ?? 'free_laundry',
       discountPercent: json['discount_percent'] != null
           ? (json['discount_percent'] as num).toDouble()
+          : null,
+      maxDiscount: json['max_discount'] != null
+          ? (json['max_discount'] as num).toDouble()
           : null,
       status: json['status'] as String? ?? 'active',
       expiredAt: json['expired_at'] != null
@@ -43,6 +48,7 @@ class VoucherModel {
       'code': code,
       'type': type,
       'discount_percent': discountPercent,
+      'max_discount': maxDiscount,
       'status': status,
       'expired_at': expiredAt?.toIso8601String(),
       'used_order_id': usedOrderId,

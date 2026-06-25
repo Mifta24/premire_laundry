@@ -41,6 +41,7 @@ create table addresses (
   longitude double precision,
   notes text,
   is_default boolean default false,
+  deleted_at timestamptz,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );

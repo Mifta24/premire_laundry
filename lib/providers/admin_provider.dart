@@ -35,31 +35,36 @@ class AdminProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
 
+  DateTime _paymentRevenueDate(PaymentModel payment) {
+    return payment.paidAt ?? payment.createdAt;
+  }
+
   double revenueWithinDays(int days) {
     final cutoff = DateTime.now().subtract(Duration(days: days));
     return _paidPayments
-        .where((p) => p.paidAt != null && p.paidAt!.isAfter(cutoff))
+        .where((p) => _paymentRevenueDate(p).isAfter(cutoff))
         .fold<double>(0, (sum, p) => sum + p.amount);
   }
 
   double get todayRevenue {
     final now = DateTime.now();
     return _paidPayments
-        .where((p) =>
-            p.paidAt != null &&
-            p.paidAt!.year == now.year &&
-            p.paidAt!.month == now.month &&
-            p.paidAt!.day == now.day)
+        .where((p) {
+          final revenueDate = _paymentRevenueDate(p);
+          return revenueDate.year == now.year &&
+              revenueDate.month == now.month &&
+              revenueDate.day == now.day;
+        })
         .fold<double>(0, (sum, p) => sum + p.amount);
   }
 
   double get monthRevenue {
     final now = DateTime.now();
     return _paidPayments
-        .where((p) =>
-            p.paidAt != null &&
-            p.paidAt!.year == now.year &&
-            p.paidAt!.month == now.month)
+        .where((p) {
+          final revenueDate = _paymentRevenueDate(p);
+          return revenueDate.year == now.year && revenueDate.month == now.month;
+        })
         .fold<double>(0, (sum, p) => sum + p.amount);
   }
 
@@ -69,23 +74,26 @@ class AdminProvider extends ChangeNotifier {
     final days = List.generate(7, (i) => now.subtract(Duration(days: 6 - i)));
     return days.map((day) {
       return _paidPayments
-          .where((p) =>
-              p.paidAt != null &&
-              p.paidAt!.year == day.year &&
-              p.paidAt!.month == day.month &&
-              p.paidAt!.day == day.day)
+          .where((p) {
+            final revenueDate = _paymentRevenueDate(p);
+            return revenueDate.year == day.year &&
+                revenueDate.month == day.month &&
+                revenueDate.day == day.day;
+          })
           .fold<double>(0, (sum, p) => sum + p.amount);
     }).toList();
   }
 
   int activeTaskCountFor(String courierId) {
     return _activeCourierTasks
-        .where((t) =>
-            t.courierId == courierId &&
-            t.status != 'picked_up' &&
-            t.status != 'delivered' &&
-            t.status != 'completed' &&
-            t.status != 'cancelled')
+        .where(
+          (t) =>
+              t.courierId == courierId &&
+              t.status != 'picked_up' &&
+              t.status != 'delivered' &&
+              t.status != 'completed' &&
+              t.status != 'cancelled',
+        )
         .length;
   }
 
@@ -95,6 +103,24 @@ class AdminProvider extends ChangeNotifier {
       for (final item in items)
         if (seen.add(keyOf(item))) item,
     ];
+  }
+
+  String _serviceBusinessKey(LaundryServiceModel service) {
+    return [
+      service.serviceType.trim().toLowerCase(),
+      service.name.trim().toLowerCase(),
+      service.unit.trim().toLowerCase(),
+      service.price.toStringAsFixed(2),
+    ].join('|');
+  }
+
+  String _deliveryFeeBusinessKey(DeliveryFeeModel fee) {
+    return [
+      fee.name.trim().toLowerCase(),
+      fee.minDistanceKm.toStringAsFixed(2),
+      fee.maxDistanceKm.toStringAsFixed(2),
+      fee.fee.toStringAsFixed(2),
+    ].join('|');
   }
 
   Future<Map<String, Map<String, String?>>> _fetchCustomerProfiles(
@@ -202,14 +228,17 @@ class AdminProvider extends ChangeNotifier {
           .from('payments')
           .select()
           .eq('status', 'paid')
-          .gte('paid_at', cutoff.toIso8601String())
-          .order('paid_at', ascending: false);
-      _paidPayments = _uniqueBy(
-        (data as List<dynamic>).map(
-          (p) => PaymentModel.fromJson(p as Map<String, dynamic>),
-        ),
-        (payment) => payment.id,
-      );
+          .or('paid_at.gte.${cutoff.toIso8601String()},paid_at.is.null')
+          .order('created_at', ascending: false);
+      final paidPayments =
+          (data as List<dynamic>)
+              .map((p) => PaymentModel.fromJson(p as Map<String, dynamic>))
+              .toList()
+            ..sort(
+              (a, b) =>
+                  _paymentRevenueDate(b).compareTo(_paymentRevenueDate(a)),
+            );
+      _paidPayments = _uniqueBy(paidPayments, (payment) => payment.orderId);
       notifyListeners();
     } catch (e) {
       _setError(e.toString());
@@ -248,7 +277,7 @@ class AdminProvider extends ChangeNotifier {
         (data as List<dynamic>).map(
           (s) => LaundryServiceModel.fromJson(s as Map<String, dynamic>),
         ),
-        (service) => service.id,
+        _serviceBusinessKey,
       );
       notifyListeners();
     } catch (e) {
@@ -293,7 +322,7 @@ class AdminProvider extends ChangeNotifier {
         (data as List<dynamic>).map(
           (f) => DeliveryFeeModel.fromJson(f as Map<String, dynamic>),
         ),
-        (fee) => fee.id,
+        _deliveryFeeBusinessKey,
       );
       notifyListeners();
     } catch (e) {
@@ -588,6 +617,8 @@ class AdminProvider extends ChangeNotifier {
 
       await _notifyCustomerPaymentValidated(orderId, isValid);
       await loadPendingPayments();
+      await loadPaidPayments();
+      await loadAllOrders();
       return true;
     } catch (e) {
       _setError(e.toString());
@@ -651,20 +682,38 @@ class AdminProvider extends ChangeNotifier {
         });
       }
 
-      // Recalculate order total
+      // Recalculate order total. Jika voucher sudah dipasang ke order kiloan
+      // setelah timbang, hitung ulang diskonnya dari subtotal final.
       final orderData = await _supabase
           .from('orders')
           .select('delivery_fee, discount_amount')
           .eq('id', orderId)
           .single();
       final deliveryFee = (orderData['delivery_fee'] as num).toDouble();
-      final discount = (orderData['discount_amount'] as num).toDouble();
+      var discount = (orderData['discount_amount'] as num).toDouble();
+      final voucherData = await _supabase
+          .from('vouchers')
+          .select('discount_percent, max_discount')
+          .eq('used_order_id', orderId)
+          .eq('status', 'used')
+          .maybeSingle();
+      if (voucherData != null) {
+        final percent =
+            (voucherData['discount_percent'] as num?)?.toDouble() ?? 0;
+        final rawDiscount = subtotal * (percent / 100);
+        discount = rawDiscount > subtotal ? subtotal : rawDiscount;
+        final maxDiscount = (voucherData['max_discount'] as num?)?.toDouble();
+        if (maxDiscount != null && maxDiscount > 0 && discount > maxDiscount) {
+          discount = maxDiscount;
+        }
+      }
       final total = subtotal + deliveryFee - discount;
 
       await _supabase
           .from('orders')
           .update({
             'subtotal': subtotal,
+            'discount_amount': discount,
             'total_amount': total,
             'status': 'waiting_payment',
             'payment_status': 'pending',

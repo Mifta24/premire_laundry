@@ -10,6 +10,7 @@ class PaymentModel {
   final String? providerReference;
   final String? paymentUrl;
   final DateTime? paidAt;
+  final DateTime createdAt;
 
   PaymentModel({
     required this.id,
@@ -23,6 +24,7 @@ class PaymentModel {
     this.providerReference,
     this.paymentUrl,
     this.paidAt,
+    required this.createdAt,
   });
 
   factory PaymentModel.fromJson(Map<String, dynamic> json) {
@@ -40,6 +42,9 @@ class PaymentModel {
       paidAt: json['paid_at'] != null
           ? DateTime.parse(json['paid_at'] as String)
           : null,
+      createdAt: json['created_at'] != null
+          ? DateTime.parse(json['created_at'] as String)
+          : DateTime.now(),
     );
   }
 
@@ -56,6 +61,7 @@ class PaymentModel {
       'provider_reference': providerReference,
       'payment_url': paymentUrl,
       'paid_at': paidAt?.toIso8601String(),
+      'created_at': createdAt.toIso8601String(),
     };
   }
 }

@@ -27,7 +27,7 @@ class HelpFaqPage extends StatelessWidget {
     ),
     (
       q: 'Bagaimana cara menggunakan voucher?',
-      a: 'Voucher aktif akan otomatis digunakan saat checkout jika pesanan Anda memenuhi syarat & ketentuan voucher tersebut.',
+      a: 'Masukkan kode voucher saat checkout atau sebelum pembayaran. Untuk laundry kiloan, gunakan voucher setelah admin menimbang pakaian dan total layanan tersedia.',
     ),
     (
       q: 'Bagaimana jika bukti pembayaran QRIS saya ditolak?',
@@ -54,33 +54,37 @@ class HelpFaqPage extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Card(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+            ),
             child: Column(
               children: [
                 for (var i = 0; i < _faqs.length; i++) ...[
                   if (i > 0) const Divider(height: 1),
                   Theme(
-                    data: Theme.of(context).copyWith(
-                      dividerColor: Colors.transparent,
-                    ),
+                    data: Theme.of(
+                      context,
+                    ).copyWith(dividerColor: Colors.transparent),
                     child: ExpansionTile(
                       title: Text(
                         _faqs[i].q,
                         style: const TextStyle(
-                            fontSize: 13, fontWeight: FontWeight.w600),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                       iconColor: AppColors.primary,
                       collapsedIconColor: Colors.grey,
-                      childrenPadding:
-                          const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                      childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                       expandedAlignment: Alignment.topLeft,
                       children: [
                         Text(
                           _faqs[i].a,
                           style: TextStyle(
-                              fontSize: 12.5,
-                              color: Colors.grey[700],
-                              height: 1.5),
+                            fontSize: 12.5,
+                            color: Colors.grey[700],
+                            height: 1.5,
+                          ),
                         ),
                       ],
                     ),
@@ -105,7 +109,10 @@ class HelpFaqPage extends StatelessWidget {
                     SizedBox(width: 8),
                     Text(
                       'Masih butuh bantuan?',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
                     ),
                   ],
                 ),

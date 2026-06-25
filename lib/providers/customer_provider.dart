@@ -46,6 +46,22 @@ class CustomerProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  double _calculateVoucherDiscount({
+    required double subtotal,
+    required double? discountPercent,
+    required double? maxDiscount,
+  }) {
+    final percent = discountPercent ?? 0;
+    final rawDiscount = subtotal * (percent / 100);
+    final cappedBySubtotal = rawDiscount > subtotal ? subtotal : rawDiscount;
+    if (maxDiscount != null &&
+        maxDiscount > 0 &&
+        cappedBySubtotal > maxDiscount) {
+      return maxDiscount;
+    }
+    return cappedBySubtotal;
+  }
+
   Future<void> loadOrders(String userId) async {
     _setLoading(true);
     _setError(null);
@@ -77,6 +93,7 @@ class CustomerProvider extends ChangeNotifier {
           .from('addresses')
           .select()
           .eq('user_id', userId)
+          .isFilter('deleted_at', null)
           .order('is_default', ascending: false);
       _addresses = _uniqueBy(
         (data as List).map(
@@ -249,7 +266,11 @@ class CustomerProvider extends ChangeNotifier {
         final now = DateTime.now().toIso8601String();
         final updated = await _supabase
             .from('vouchers')
-            .update({'status': 'used', 'used_order_id': orderId})
+            .update({
+              'status': 'used',
+              'used_order_id': orderId,
+              'used_at': DateTime.now().toIso8601String(),
+            })
             .eq('code', voucherCode)
             .eq('user_id', customerId)
             .eq('status', 'active')
@@ -389,7 +410,37 @@ class CustomerProvider extends ChangeNotifier {
     _setLoading(true);
     _setError(null);
     try {
-      await _supabase.from('addresses').delete().eq('id', addressId);
+      final deleted = await _supabase
+          .from('addresses')
+          .update({
+            'deleted_at': DateTime.now().toIso8601String(),
+            'is_default': false,
+          })
+          .eq('id', addressId)
+          .eq('user_id', userId)
+          .isFilter('deleted_at', null)
+          .select('id');
+      if ((deleted as List<dynamic>).isEmpty) {
+        throw Exception('Alamat tidak ditemukan atau sudah dihapus');
+      }
+      final remaining = await _supabase
+          .from('addresses')
+          .select('id, is_default')
+          .eq('user_id', userId)
+          .isFilter('deleted_at', null)
+          .order('is_default', ascending: false)
+          .order('created_at', ascending: true);
+      final remainingAddresses = remaining as List<dynamic>;
+      final hasDefault = remainingAddresses.any(
+        (address) => (address as Map<String, dynamic>)['is_default'] == true,
+      );
+      if (!hasDefault && remainingAddresses.isNotEmpty) {
+        final firstAddress = remainingAddresses.first as Map<String, dynamic>;
+        await _supabase
+            .from('addresses')
+            .update({'is_default': true})
+            .eq('id', firstAddress['id'] as String);
+      }
       await loadAddresses(userId);
       return true;
     } catch (e) {
@@ -407,12 +458,140 @@ class CustomerProvider extends ChangeNotifier {
       await _supabase
           .from('addresses')
           .update({'is_default': false})
-          .eq('user_id', userId);
+          .eq('user_id', userId)
+          .isFilter('deleted_at', null);
       await _supabase
           .from('addresses')
           .update({'is_default': true})
-          .eq('id', addressId);
+          .eq('id', addressId)
+          .eq('user_id', userId)
+          .isFilter('deleted_at', null);
       await loadAddresses(userId);
+      return true;
+    } catch (e) {
+      _setError(e.toString());
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  Future<bool> applyVoucherToOrder({
+    required String orderId,
+    required String customerId,
+    required String code,
+  }) async {
+    _setLoading(true);
+    _setError(null);
+    try {
+      if (customerId.isEmpty) {
+        throw Exception('User belum login');
+      }
+
+      final orderData = await _supabase
+          .from('orders')
+          .select(
+            'id, customer_id, subtotal, delivery_fee, discount_amount, '
+            'total_amount, status, payment_status',
+          )
+          .eq('id', orderId)
+          .eq('customer_id', customerId)
+          .single();
+
+      if (orderData['payment_status'] != 'pending') {
+        throw Exception('Voucher hanya bisa dipakai sebelum pembayaran dibuat');
+      }
+      if (orderData['status'] == 'cancelled' ||
+          orderData['status'] == 'completed') {
+        throw Exception('Voucher tidak bisa dipakai untuk pesanan ini');
+      }
+
+      final subtotal = (orderData['subtotal'] as num?)?.toDouble() ?? 0;
+      final deliveryFee = (orderData['delivery_fee'] as num?)?.toDouble() ?? 0;
+      final currentDiscount =
+          (orderData['discount_amount'] as num?)?.toDouble() ?? 0;
+      if (subtotal <= 0) {
+        throw Exception('Voucher bisa dipakai setelah total layanan tersedia');
+      }
+      if (currentDiscount > 0) {
+        throw Exception('Pesanan ini sudah memakai voucher');
+      }
+
+      final activePayments = await _supabase
+          .from('payments')
+          .select('id')
+          .eq('order_id', orderId)
+          .inFilter('status', ['pending', 'waiting_verification', 'paid'])
+          .limit(1);
+      if ((activePayments as List<dynamic>).isNotEmpty) {
+        throw Exception('Voucher tidak bisa dipakai setelah pembayaran dibuat');
+      }
+
+      final voucherData = await _supabase
+          .from('vouchers')
+          .select()
+          .eq('code', code)
+          .eq('user_id', customerId)
+          .maybeSingle();
+      if (voucherData == null) {
+        throw Exception('Voucher tidak ditemukan atau bukan milik Anda');
+      }
+
+      final voucher = VoucherModel.fromJson(voucherData);
+      if (voucher.status != 'active') {
+        throw Exception('Voucher sudah digunakan atau tidak aktif');
+      }
+      if (voucher.expiredAt != null &&
+          voucher.expiredAt!.isBefore(DateTime.now())) {
+        throw Exception('Voucher sudah kedaluwarsa');
+      }
+
+      final discount = _calculateVoucherDiscount(
+        subtotal: subtotal,
+        discountPercent: voucher.discountPercent,
+        maxDiscount: voucher.maxDiscount,
+      );
+      if (discount <= 0) {
+        throw Exception('Voucher tidak memberi diskon untuk pesanan ini');
+      }
+
+      final now = DateTime.now().toIso8601String();
+      final updatedVoucher = await _supabase
+          .from('vouchers')
+          .update({'status': 'used', 'used_order_id': orderId, 'used_at': now})
+          .eq('id', voucher.id)
+          .eq('status', 'active')
+          .or('expired_at.is.null,expired_at.gt.$now')
+          .select('id');
+      if ((updatedVoucher as List<dynamic>).isEmpty) {
+        throw Exception(
+          'Voucher tidak valid, kedaluwarsa, atau sudah digunakan',
+        );
+      }
+
+      try {
+        await _supabase
+            .from('orders')
+            .update({
+              'discount_amount': discount,
+              'total_amount': subtotal + deliveryFee - discount,
+            })
+            .eq('id', orderId)
+            .eq('customer_id', customerId)
+            .eq('payment_status', 'pending');
+      } catch (e) {
+        await _supabase
+            .from('vouchers')
+            .update({
+              'status': 'active',
+              'used_order_id': null,
+              'used_at': null,
+            })
+            .eq('id', voucher.id)
+            .eq('used_order_id', orderId);
+        rethrow;
+      }
+
       return true;
     } catch (e) {
       _setError(e.toString());

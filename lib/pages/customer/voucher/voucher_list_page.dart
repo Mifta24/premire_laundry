@@ -35,7 +35,9 @@ class _VoucherListPageState extends State<VoucherListPage> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<CustomerProvider>();
-    final active = provider.vouchers.where((v) => v.status == 'active').toList();
+    final active = provider.vouchers
+        .where((v) => v.status == 'active')
+        .toList();
     final riwayat = provider.vouchers
         .where((v) => v.status == 'used' || v.status == 'expired')
         .toList();
@@ -135,12 +137,15 @@ class _VoucherListPageState extends State<VoucherListPage> {
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.info_outline,
-                      color: AppColors.primary, size: 18),
+                  const Icon(
+                    Icons.info_outline,
+                    color: AppColors.primary,
+                    size: 18,
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Voucher akan otomatis digunakan saat checkout jika memenuhi syarat & ketentuan.',
+                      'Masukkan kode voucher saat checkout atau sebelum pembayaran untuk memakai diskon.',
                       style: TextStyle(fontSize: 11, color: Colors.grey[700]),
                     ),
                   ),
@@ -195,7 +200,8 @@ class _VoucherListPageState extends State<VoucherListPage> {
   }
 
   ({String title, String desc, Color color, String pct}) _voucherInfo(
-      VoucherModel v) {
+    VoucherModel v,
+  ) {
     if (v.type == 'free_laundry') {
       return (
         title: 'Voucher Gratis 1x Cuci',
@@ -274,7 +280,9 @@ class _VoucherListPageState extends State<VoucherListPage> {
                       ),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 3),
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
                         decoration: BoxDecoration(
                           color: isActive
                               ? AppColors.accentPurple.withValues(alpha: 0.12)
@@ -285,8 +293,8 @@ class _VoucherListPageState extends State<VoucherListPage> {
                           isActive
                               ? 'Aktif'
                               : v.status == 'used'
-                                  ? 'Terpakai'
-                                  : 'Kadaluarsa',
+                              ? 'Terpakai'
+                              : 'Kadaluarsa',
                           style: TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.bold,
