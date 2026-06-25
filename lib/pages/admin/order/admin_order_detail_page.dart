@@ -19,7 +19,13 @@ const _stepIcons = [
   Icons.inventory_2_outlined,
   Icons.check_circle_outline,
 ];
-const _stepLabels = ['Jemput', 'Dicuci', 'Disetrika', 'Siap Diantar', 'Selesai'];
+const _stepLabels = [
+  'Jemput',
+  'Dicuci',
+  'Disetrika',
+  'Siap Diantar',
+  'Selesai',
+];
 
 class AdminOrderDetailPage extends StatefulWidget {
   final String orderId;
@@ -183,11 +189,20 @@ class _AdminOrderDetailPageState extends State<AdminOrderDetailPage> {
     final availableTaskTypes = order != null
         ? _availableTaskTypesForOrder(order, courierTasks)
         : const <String>[];
+    final kiloanItem = order?.orderItems
+        .where((item) => item.serviceType == 'kiloan')
+        .firstOrNull;
 
     setState(() {
       _order = order;
       _statusHistory = history;
       _courierTasks = courierTasks;
+      _selectedServiceId = kiloanItem?.serviceId.isNotEmpty == true
+          ? kiloanItem!.serviceId
+          : _selectedServiceId;
+      if (kiloanItem?.weightKg != null) {
+        _weightController.text = kiloanItem!.weightKg!.toString();
+      }
       _selectedTaskType = availableTaskTypes.isNotEmpty
           ? availableTaskTypes.first
           : _selectedTaskType;
@@ -279,12 +294,16 @@ class _AdminOrderDetailPageState extends State<AdminOrderDetailPage> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Perbarui Status',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            const Text(
+              'Perbarui Status',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 16),
             if (nextStatuses.isEmpty)
-              const Text('Tidak ada status lanjutan',
-                  style: TextStyle(color: Colors.grey))
+              const Text(
+                'Tidak ada status lanjutan',
+                style: TextStyle(color: Colors.grey),
+              )
             else
               ...nextStatuses.map(
                 (status) => Padding(
@@ -296,8 +315,9 @@ class _AdminOrderDetailPageState extends State<AdminOrderDetailPage> {
                     },
                     label: StatusBadge.labelFor(status),
                     isLoading: isLoading,
-                    color:
-                        status == 'cancelled' ? AppColors.error : AppColors.secondary,
+                    color: status == 'cancelled'
+                        ? AppColors.error
+                        : AppColors.secondary,
                     isOutlined: status == 'cancelled',
                   ),
                 ),
@@ -464,7 +484,9 @@ class _AdminOrderDetailPageState extends State<AdminOrderDetailPage> {
           children: [
             // Header
             Card(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
@@ -473,9 +495,13 @@ class _AdminOrderDetailPageState extends State<AdminOrderDetailPage> {
                     Row(
                       children: [
                         Expanded(
-                          child: Text(order.orderCode,
-                              style: const TextStyle(
-                                  fontSize: 17, fontWeight: FontWeight.bold)),
+                          child: Text(
+                            order.orderCode,
+                            style: const TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ),
                         StatusBadge(status: order.status),
                       ],
@@ -504,24 +530,31 @@ class _AdminOrderDetailPageState extends State<AdminOrderDetailPage> {
                     Icon(Icons.cancel_outlined, color: AppColors.error),
                     SizedBox(width: 12),
                     Expanded(
-                      child: Text('Pesanan ini telah dibatalkan.',
-                          style: TextStyle(color: AppColors.error)),
+                      child: Text(
+                        'Pesanan ini telah dibatalkan.',
+                        style: TextStyle(color: AppColors.error),
+                      ),
                     ),
                   ],
                 ),
               )
             else
               Card(
-                shape:
-                    RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Status Pesanan',
-                          style:
-                              TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                      const Text(
+                        'Status Pesanan',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                       const SizedBox(height: 12),
                       Row(
                         children: List.generate(_stepIcons.length * 2 - 1, (i) {
@@ -530,8 +563,9 @@ class _AdminOrderDetailPageState extends State<AdminOrderDetailPage> {
                             return Expanded(
                               child: Container(
                                 height: 2,
-                                color:
-                                    lineDone ? AppColors.primary : Colors.grey[300],
+                                color: lineDone
+                                    ? AppColors.primary
+                                    : Colors.grey[300],
                               ),
                             );
                           }
@@ -544,19 +578,26 @@ class _AdminOrderDetailPageState extends State<AdminOrderDetailPage> {
                                 height: 28,
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
-                                  color: done ? AppColors.primary : Colors.grey[200],
+                                  color: done
+                                      ? AppColors.primary
+                                      : Colors.grey[200],
                                 ),
-                                child: Icon(_stepIcons[step],
-                                    size: 14,
-                                    color: done ? Colors.white : Colors.grey[500]),
+                                child: Icon(
+                                  _stepIcons[step],
+                                  size: 14,
+                                  color: done ? Colors.white : Colors.grey[500],
+                                ),
                               ),
                               const SizedBox(height: 4),
-                              Text(_stepLabels[step],
-                                  style: TextStyle(
-                                      fontSize: 9,
-                                      color: done
-                                          ? AppColors.primary
-                                          : Colors.grey[500])),
+                              Text(
+                                _stepLabels[step],
+                                style: TextStyle(
+                                  fontSize: 9,
+                                  color: done
+                                      ? AppColors.primary
+                                      : Colors.grey[500],
+                                ),
+                              ),
                             ],
                           );
                         }),
@@ -574,10 +615,13 @@ class _AdminOrderDetailPageState extends State<AdminOrderDetailPage> {
                   const Icon(Icons.person, size: 18, color: AppColors.primary),
                   const SizedBox(width: 10),
                   Expanded(
-                    child: Text(order.customerName ?? '-',
-                        style: const TextStyle(fontWeight: FontWeight.w500)),
+                    child: Text(
+                      order.customerName ?? '-',
+                      style: const TextStyle(fontWeight: FontWeight.w500),
+                    ),
                   ),
-                  if (order.customerPhone != null && order.customerPhone!.isNotEmpty)
+                  if (order.customerPhone != null &&
+                      order.customerPhone!.isNotEmpty)
                     IconButton(
                       icon: const Icon(Icons.phone, color: AppColors.success),
                       onPressed: () => _callCustomer(order.customerPhone!),
@@ -592,7 +636,11 @@ class _AdminOrderDetailPageState extends State<AdminOrderDetailPage> {
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(Icons.location_on, size: 18, color: AppColors.primary),
+                    const Icon(
+                      Icons.location_on,
+                      size: 18,
+                      color: AppColors.primary,
+                    ),
                     const SizedBox(width: 10),
                     Expanded(child: Text(order.addressText!)),
                   ],
@@ -673,12 +721,20 @@ class _AdminOrderDetailPageState extends State<AdminOrderDetailPage> {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
+                      const SizedBox(height: 4),
+                      Text(
+                        selectedServiceId == null
+                            ? 'Pilih layanan kiloan untuk order lama, lalu input berat.'
+                            : 'Layanan sudah dipilih customer. Admin cukup input berat.',
+                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      ),
                       const SizedBox(height: 12),
                       DropdownButtonFormField<String>(
                         key: ValueKey('service_${selectedServiceId ?? ''}'),
                         initialValue: selectedServiceId,
                         hint: const Text('Pilih Layanan Kiloan'),
                         decoration: InputDecoration(
+                          labelText: 'Layanan Kiloan',
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(10),
                           ),
@@ -894,7 +950,8 @@ class _AdminOrderDetailPageState extends State<AdminOrderDetailPage> {
           children: [
             Expanded(
               child: AppButton(
-                onPressed: () => _showUpdateStatusSheet(nextStatuses, provider.isLoading),
+                onPressed: () =>
+                    _showUpdateStatusSheet(nextStatuses, provider.isLoading),
                 label: 'Update Status',
                 isOutlined: true,
               ),

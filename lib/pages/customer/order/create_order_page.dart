@@ -28,6 +28,7 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
   final _voucherController = TextEditingController();
 
   List<LaundryServiceModel> _services = [];
+  String? _selectedKiloanServiceId;
   final Map<String, int> _selectedQuantities = {};
   AddressModel? _selectedAddress;
   List<AddressModel> _addresses = [];
@@ -95,8 +96,9 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
       final servicesData = await supabase
           .from('laundry_services')
           .select()
-          .eq('service_type', 'satuan')
-          .eq('is_active', true);
+          .eq('is_active', true)
+          .order('service_type')
+          .order('name');
       _services = _uniqueBy(
         (servicesData as List<dynamic>).map(
           (s) => LaundryServiceModel.fromJson(s as Map<String, dynamic>),
@@ -218,8 +220,12 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
   }
 
   void _updateSubtotal() {
+    if (_orderType == 'kiloan') {
+      setState(() => _subtotal = 0);
+      return;
+    }
     double sub = 0;
-    for (final svc in _services) {
+    for (final svc in _satuanServices) {
       final qty = _selectedQuantities[svc.id] ?? 0;
       sub += svc.price * qty;
     }
@@ -278,8 +284,21 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
   }
 
   List<Map<String, dynamic>> get _orderItems {
-    if (_orderType == 'kiloan') return [];
-    return _services
+    if (_orderType == 'kiloan') {
+      final service = _selectedKiloanService;
+      if (service == null) return [];
+      return [
+        {
+          'service_id': service.id,
+          'service_name': service.name,
+          'service_type': service.serviceType,
+          'quantity': 1,
+          'price': service.price,
+          'subtotal': 0,
+        },
+      ];
+    }
+    return _satuanServices
         .where((s) => (_selectedQuantities[s.id] ?? 0) > 0)
         .map(
           (s) => {
@@ -292,6 +311,29 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
           },
         )
         .toList();
+  }
+
+  List<LaundryServiceModel> get _kiloanServices =>
+      _services.where((s) => s.serviceType == 'kiloan').toList();
+
+  List<LaundryServiceModel> get _satuanServices =>
+      _services.where((s) => s.serviceType == 'satuan').toList();
+
+  LaundryServiceModel? get _selectedKiloanService {
+    final serviceId = _selectedKiloanServiceId;
+    if (serviceId == null) return null;
+    for (final service in _kiloanServices) {
+      if (service.id == serviceId) return service;
+    }
+    return null;
+  }
+
+  String _kiloanDurationText(String serviceName) {
+    final lowerName = serviceName.toLowerCase();
+    if (lowerName.startsWith('reguler')) return 'Max 3 hari';
+    if (lowerName.startsWith('express')) return 'Masuk hari ini, besok selesai';
+    if (lowerName.startsWith('kilat')) return 'Masuk pagi, sore selesai';
+    return 'Ditimbang di toko';
   }
 
   Future<void> _pickAddress() async {
@@ -406,6 +448,12 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
     if (_orderType == 'satuan' && _orderItems.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Pilih minimal satu layanan')),
+      );
+      return;
+    }
+    if (_orderType == 'kiloan' && _selectedKiloanService == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Pilih layanan kiloan terlebih dahulu')),
       );
       return;
     }
@@ -603,62 +651,64 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
                     const SizedBox(height: 16),
                     _buildSummary(),
                   ],
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _voucherController,
-                    onChanged: (_) {
-                      if (_appliedVoucher != null) {
-                        setState(() => _appliedVoucher = null);
-                      }
-                    },
-                    decoration: InputDecoration(
-                      labelText: 'Kode Voucher (opsional)',
-                      prefixIcon: const Icon(Icons.card_giftcard),
-                      suffixIcon: Padding(
-                        padding: const EdgeInsets.all(6),
-                        child: _isValidatingVoucher
-                            ? const Padding(
-                                padding: EdgeInsets.all(10),
-                                child: SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
+                  if (_orderType == 'satuan') ...[
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _voucherController,
+                      onChanged: (_) {
+                        if (_appliedVoucher != null) {
+                          setState(() => _appliedVoucher = null);
+                        }
+                      },
+                      decoration: InputDecoration(
+                        labelText: 'Kode Voucher (opsional)',
+                        prefixIcon: const Icon(Icons.card_giftcard),
+                        suffixIcon: Padding(
+                          padding: const EdgeInsets.all(6),
+                          child: _isValidatingVoucher
+                              ? const Padding(
+                                  padding: EdgeInsets.all(10),
+                                  child: SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
                                   ),
+                                )
+                              : TextButton(
+                                  onPressed: _applyVoucher,
+                                  child: const Text('Terapkan'),
                                 ),
-                              )
-                            : TextButton(
-                                onPressed: _applyVoucher,
-                                child: const Text('Terapkan'),
-                              ),
-                      ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      filled: true,
-                      fillColor: Colors.white,
-                    ),
-                  ),
-                  if (_appliedVoucher != null) ...[
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.check_circle,
-                          color: AppColors.success,
-                          size: 16,
                         ),
-                        const SizedBox(width: 6),
-                        Text(
-                          'Diskon ${formatRupiah(_discountAmount)} diterapkan',
-                          style: const TextStyle(
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        filled: true,
+                        fillColor: Colors.white,
+                      ),
+                    ),
+                    if (_appliedVoucher != null) ...[
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.check_circle,
                             color: AppColors.success,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 12,
+                            size: 16,
                           ),
-                        ),
-                      ],
-                    ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Diskon ${formatRupiah(_discountAmount)} diterapkan',
+                            style: const TextStyle(
+                              color: AppColors.success,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ],
                   const SizedBox(height: 24),
                   AppButton(
@@ -707,7 +757,14 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
   Widget _typeButton(String type, String label, IconData icon) {
     final isSelected = _orderType == type;
     return GestureDetector(
-      onTap: () => setState(() => _orderType = type),
+      onTap: () {
+        setState(() {
+          _orderType = type;
+          _appliedVoucher = null;
+          _voucherController.clear();
+        });
+        _updateSubtotal();
+      },
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
@@ -734,27 +791,64 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
 
   Widget _buildServiceSection() {
     if (_orderType == 'kiloan') {
+      final services = _kiloanServices;
+      if (services.isEmpty) {
+        return const Card(
+          child: Padding(
+            padding: EdgeInsets.all(20),
+            child: Center(child: Text('Tidak ada layanan kiloan tersedia')),
+          ),
+        );
+      }
       return Card(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        child: const Padding(
-          padding: EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Icon(Icons.info_outline, color: AppColors.primary),
-              SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  'Berat pakaian akan ditimbang di toko. Total pembayaran dihitung setelah penimbangan.',
-                  style: TextStyle(fontSize: 13),
-                ),
+        child: Column(
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 14, 16, 6),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline, color: AppColors.primary),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Pilih paket kiloan sekarang. Admin nanti hanya input berat setelah pakaian ditimbang.',
+                      style: TextStyle(fontSize: 13),
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
+            ),
+            ...services.map((svc) {
+              final isSelected = _selectedKiloanServiceId == svc.id;
+              return ListTile(
+                selected: isSelected,
+                leading: Icon(
+                  isSelected
+                      ? Icons.check_circle
+                      : Icons.local_laundry_service_outlined,
+                  color: isSelected ? AppColors.primary : Colors.grey,
+                ),
+                title: Text(
+                  svc.name,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: isSelected ? AppColors.primary : Colors.black87,
+                  ),
+                ),
+                subtitle: Text(
+                  '${formatRupiah(svc.price)} / ${svc.unit} • ${_kiloanDurationText(svc.name)}',
+                ),
+                onTap: () => setState(() => _selectedKiloanServiceId = svc.id),
+              );
+            }),
+          ],
         ),
       );
     }
 
-    if (_services.isEmpty) {
+    final services = _satuanServices;
+    if (services.isEmpty) {
       return const Card(
         child: Padding(
           padding: EdgeInsets.all(20),
@@ -766,7 +860,7 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Column(
-        children: _services.map((svc) {
+        children: services.map((svc) {
           final qty = _selectedQuantities[svc.id] ?? 0;
           return ListTile(
             leading: Container(

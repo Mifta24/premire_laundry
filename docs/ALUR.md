@@ -72,6 +72,10 @@ Customer login
 ↓
 Pilih laundry kiloan
 ↓
+Pilih layanan kiloan:
+Reguler / Express / Kilat
+dan tipe Cuci Setrika / Cuci Lipat / Setrika
+↓
 Input catatan pakaian jika perlu
 ↓
 Pilih alamat dan titik lokasi

@@ -56,6 +56,68 @@ create unique index if not exists uniq_laundry_services_business_identity
     lower(btrim(unit))
   );
 
+-- Sinkronkan daftar harga layanan terbaru.
+with desired_services (name, service_type, price, unit) as (
+  values
+    ('Reguler - Cuci Setrika', 'kiloan', 7000,  'kg'),
+    ('Reguler - Cuci Lipat',   'kiloan', 6000,  'kg'),
+    ('Reguler - Setrika',      'kiloan', 6000,  'kg'),
+    ('Express - Cuci Setrika', 'kiloan', 10000, 'kg'),
+    ('Express - Cuci Lipat',   'kiloan', 8000,  'kg'),
+    ('Express - Setrika',      'kiloan', 8000,  'kg'),
+    ('Kilat - Cuci Setrika',   'kiloan', 12000, 'kg'),
+    ('Kilat - Cuci Lipat',     'kiloan', 10000, 'kg'),
+    ('Kilat - Setrika',        'kiloan', 10000, 'kg'),
+    ('Selimut Kecil',          'satuan', 10000, 'item'),
+    ('Selimut Sedang',         'satuan', 15000, 'item'),
+    ('Bedcover Kecil',         'satuan', 30000, 'item'),
+    ('Bedcover Besar',         'satuan', 40000, 'item'),
+    ('Sprei',                  'satuan', 12000, 'item'),
+    ('Sprei + Sarung Bantal',  'satuan', 15000, 'item'),
+    ('Jas',                    'satuan', 30000, 'item'),
+    ('Celana Pendek',          'satuan', 15000, 'item'),
+    ('Paket Jas + Celana',     'satuan', 45000, 'paket'),
+    ('Celana Panjang',         'satuan', 20000, 'item'),
+    ('Kemeja',                 'satuan', 20000, 'item'),
+    ('Sepatu',                 'satuan', 35000, 'pasang'),
+    ('Helm',                   'satuan', 35000, 'item')
+),
+deactivated as (
+  update laundry_services ls
+  set is_active = false
+  where not exists (
+    select 1
+    from desired_services ds
+    where lower(btrim(ds.name)) = lower(btrim(ls.name))
+      and ds.service_type = ls.service_type
+      and ds.price = ls.price
+      and lower(btrim(ds.unit)) = lower(btrim(ls.unit))
+  )
+),
+reactivated as (
+  update laundry_services ls
+  set is_active = true
+  where exists (
+    select 1
+    from desired_services ds
+    where lower(btrim(ds.name)) = lower(btrim(ls.name))
+      and ds.service_type = ls.service_type
+      and ds.price = ls.price
+      and lower(btrim(ds.unit)) = lower(btrim(ls.unit))
+  )
+)
+insert into laundry_services (name, service_type, price, unit, is_active)
+select name, service_type, price, unit, true
+from desired_services ds
+where not exists (
+  select 1
+  from laundry_services ls
+  where lower(btrim(ls.name)) = lower(btrim(ds.name))
+    and ls.service_type = ds.service_type
+    and ls.price = ds.price
+    and lower(btrim(ls.unit)) = lower(btrim(ds.unit))
+);
+
 -- Hapus ongkir yang benar-benar identik.
 with duplicate_fees as (
   select

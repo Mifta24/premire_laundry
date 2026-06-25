@@ -30,7 +30,7 @@ class OrderItemModel {
       serviceId: json['service_id'] as String? ?? '',
       serviceName: json['service_name'] as String? ?? '',
       serviceType: json['service_type'] as String? ?? 'kiloan',
-      quantity: json['quantity'] as int? ?? 0,
+      quantity: (json['quantity'] as num?)?.toInt() ?? 0,
       weightKg: json['weight_kg'] != null
           ? (json['weight_kg'] as num).toDouble()
           : null,

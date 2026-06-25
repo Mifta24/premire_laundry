@@ -636,44 +636,45 @@ class AdminProvider extends ChangeNotifier {
     _setLoading(true);
     _setError(null);
     try {
-      // Get service price
+      // Get selected kiloan service price. Customer normally chooses this
+      // during order creation; admin may still adjust it before invoice.
       final serviceData = await _supabase
           .from('laundry_services')
-          .select('price')
+          .select('name, price')
           .eq('id', serviceId)
           .single();
+      final serviceName = serviceData['name'] as String? ?? '';
       final pricePerKg = (serviceData['price'] as num).toDouble();
       final subtotal = weightKg * pricePerKg;
 
-      // Update or insert order item
+      // Update the kiloan order item chosen by customer, or create it for
+      // older orders that were made before kiloan service selection existed.
       final existingItems = await _supabase
           .from('order_items')
           .select()
           .eq('order_id', orderId)
-          .eq('service_id', serviceId);
+          .eq('service_type', 'kiloan')
+          .limit(1);
 
       if ((existingItems as List).isNotEmpty) {
+        final existingItem = existingItems.first;
         await _supabase
             .from('order_items')
             .update({
+              'service_id': serviceId,
+              'service_name': serviceName,
               'weight_kg': weightKg,
               'price': pricePerKg,
               'subtotal': subtotal,
               'quantity': 1,
             })
-            .eq('order_id', orderId)
-            .eq('service_id', serviceId);
+            .eq('id', existingItem['id'] as String);
       } else {
-        final serviceInfo = await _supabase
-            .from('laundry_services')
-            .select()
-            .eq('id', serviceId)
-            .single();
         await _supabase.from('order_items').insert({
           'id': _uuid.v4(),
           'order_id': orderId,
           'service_id': serviceId,
-          'service_name': serviceInfo['name'],
+          'service_name': serviceName,
           'service_type': 'kiloan',
           'quantity': 1,
           'weight_kg': weightKg,
