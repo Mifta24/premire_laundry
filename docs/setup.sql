@@ -296,7 +296,7 @@ with duplicate_fees as (
   select
     id,
     row_number() over (
-      partition by lower(btrim(name)), min_distance_km, coalesce(max_distance_km, -1), fee
+      partition by lower(btrim(name)), min_distance_km, coalesce(max_distance_km, -1)
       order by is_active desc, created_at, id
     ) as rn
   from delivery_fees
@@ -330,7 +330,7 @@ create index if not exists idx_loyalty_points_user_id    on loyalty_points(user_
 create unique index if not exists uniq_laundry_services_business_identity
   on laundry_services (lower(btrim(name)), service_type, price, lower(btrim(unit)));
 create unique index if not exists uniq_delivery_fees_business_identity
-  on delivery_fees (lower(btrim(name)), min_distance_km, coalesce(max_distance_km, -1), fee);
+  on delivery_fees (lower(btrim(name)), min_distance_km, coalesce(max_distance_km, -1));
 
 
 -- =============================================================================
@@ -1188,12 +1188,13 @@ where not exists (
     and lower(btrim(ls.unit)) = lower(btrim(ds.unit))
 );
 
--- Ongkir default
+-- Ongkir default (fee = tarif per km untuk rentang jarak; total jemput+antar
+-- dihitung aplikasi sebagai jarak x fee x 2)
 insert into delivery_fees (name, min_distance_km, max_distance_km, fee) values
   ('0 - 2 km',  0, 2,    5000),
-  ('2 - 5 km',  2, 5,    10000),
-  ('5 - 8 km',  5, 8,    15000),
-  ('> 8 km',    8, null, 20000)
+  ('2 - 5 km',  2, 5,    4000),
+  ('5 - 8 km',  5, 8,    3500),
+  ('> 8 km',    8, null, 3000)
 on conflict do nothing;
 
 -- Settings default

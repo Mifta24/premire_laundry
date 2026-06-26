@@ -113,6 +113,20 @@ class _AdminOrderDetailPageState extends State<AdminOrderDetailPage> {
     }
   }
 
+  double _billableLaundryWeight(double actualWeightKg) {
+    const minWeightKg = 1.0;
+    final roundedWeightKg = (actualWeightKg * 2).ceil() / 2;
+    return roundedWeightKg < minWeightKg
+        ? minWeightKg
+        : roundedWeightKg.toDouble();
+  }
+
+  String _kiloanWeightText(double? actualWeightKg) {
+    final actual = actualWeightKg ?? 0;
+    final billable = _billableLaundryWeight(actual);
+    return 'Aktual ${actual.toStringAsFixed(1)} kg, tagihan ${billable.toStringAsFixed(1)} kg';
+  }
+
   bool _hasActiveTask(String taskType) {
     return _courierTasks.any(
       (task) =>
@@ -659,7 +673,7 @@ class _AdminOrderDetailPageState extends State<AdminOrderDetailPage> {
                     title: Text(item.serviceName),
                     subtitle: Text(
                       item.serviceType == 'kiloan'
-                          ? '${item.weightKg ?? 0} kg'
+                          ? _kiloanWeightText(item.weightKg)
                           : '${item.quantity} pcs',
                     ),
                     trailing: Text(
@@ -680,7 +694,7 @@ class _AdminOrderDetailPageState extends State<AdminOrderDetailPage> {
             // Payment summary
             _sectionCard('Ringkasan Biaya', [
               _row('Subtotal', formatRupiah(order.subtotal)),
-              _row('Ongkir', formatRupiah(order.deliveryFee)),
+              _row('Biaya Jemput & Antar', formatRupiah(order.deliveryFee)),
               if (order.discountAmount > 0)
                 _row('Diskon', '- ${formatRupiah(order.discountAmount)}'),
               const Divider(),
@@ -761,8 +775,10 @@ class _AdminOrderDetailPageState extends State<AdminOrderDetailPage> {
                           decimal: true,
                         ),
                         decoration: InputDecoration(
-                          labelText: 'Berat (kg)',
+                          labelText: 'Berat aktual (kg)',
                           suffixText: 'kg',
+                          helperText:
+                              'Tagihan dibulatkan ke atas per 0.5 kg, minimum 1 kg',
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(10),
                           ),

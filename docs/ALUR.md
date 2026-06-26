@@ -42,7 +42,7 @@ Input catatan pakaian jika perlu
 ↓
 Pilih alamat dan titik lokasi
 ↓
-Sistem hitung ongkir sederhana
+Sistem hitung biaya jemput & antar berdasarkan jarak
 ↓
 Total harga langsung muncul
 ↓
@@ -80,7 +80,7 @@ Input catatan pakaian jika perlu
 ↓
 Pilih alamat dan titik lokasi
 ↓
-Sistem hitung ongkir sederhana
+Sistem hitung biaya jemput & antar berdasarkan jarak
 ↓
 Customer submit order
 ↓
@@ -94,9 +94,9 @@ Pakaian diterima toko
 ↓
 Admin timbang pakaian
 ↓
-Admin input berat asli
+Admin input berat aktual
 ↓
-Sistem generate tagihan
+Sistem membulatkan berat tagihan ke atas per 0,5 kg dan generate tagihan
 ↓
 Customer menerima notifikasi tagihan
 ↓
@@ -272,4 +272,4 @@ Customer dapat menggunakan voucher untuk order berikutnya
 Catatan:
 
 - Voucher hanya berlaku untuk layanan laundry.
-- Ongkir tetap dibayar customer.
+- Biaya jemput & antar tetap dibayar customer.

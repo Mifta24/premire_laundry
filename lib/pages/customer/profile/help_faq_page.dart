@@ -23,7 +23,7 @@ class HelpFaqPage extends StatelessWidget {
     ),
     (
       q: 'Bagaimana cara kerja poin loyalty?',
-      a: 'Setiap pesanan yang selesai menambah 1 poin loyalty. Setelah terkumpul 10 poin, Anda akan mendapatkan voucher gratis 1x cuci yang bisa digunakan untuk pesanan berikutnya (ongkir tetap dibayar).',
+      a: 'Setiap pesanan yang selesai menambah 1 poin loyalty. Setelah terkumpul 10 poin, Anda akan mendapatkan voucher gratis 1x cuci yang bisa digunakan untuk pesanan berikutnya (biaya jemput & antar tetap dibayar).',
     ),
     (
       q: 'Bagaimana cara menggunakan voucher?',

@@ -25,19 +25,26 @@ class _DeliveryFeePageState extends State<DeliveryFeePage> {
 
   void _showDialog({DeliveryFeeModel? fee}) {
     final nameController = TextEditingController(text: fee?.name ?? '');
-    final minController =
-        TextEditingController(text: fee?.minDistanceKm.toString() ?? '');
-    final maxController =
-        TextEditingController(text: fee?.maxDistanceKm.toString() ?? '');
-    final feeController =
-        TextEditingController(text: fee?.fee.toString() ?? '');
+    final minController = TextEditingController(
+      text: fee?.minDistanceKm.toString() ?? '',
+    );
+    final maxController = TextEditingController(
+      text: fee?.maxDistanceKm?.toString() ?? '',
+    );
+    final feeController = TextEditingController(
+      text: fee?.fee.toString() ?? '',
+    );
     bool isActive = fee?.isActive ?? true;
 
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
-          title: Text(fee == null ? 'Tambah Ongkir' : 'Edit Ongkir'),
+          title: Text(
+            fee == null
+                ? 'Tambah Tarif Jemput & Antar'
+                : 'Edit Tarif Jemput & Antar',
+          ),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -48,7 +55,8 @@ class _DeliveryFeePageState extends State<DeliveryFeePage> {
                     labelText: 'Nama',
                     hintText: 'Contoh: Dalam Kota',
                     border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10)),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -58,11 +66,13 @@ class _DeliveryFeePageState extends State<DeliveryFeePage> {
                       child: TextField(
                         controller: minController,
                         keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true),
+                          decimal: true,
+                        ),
                         decoration: InputDecoration(
                           labelText: 'Min (km)',
                           border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(10)),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
                         ),
                       ),
                     ),
@@ -71,11 +81,14 @@ class _DeliveryFeePageState extends State<DeliveryFeePage> {
                       child: TextField(
                         controller: maxController,
                         keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true),
+                          decimal: true,
+                        ),
                         decoration: InputDecoration(
                           labelText: 'Max (km)',
+                          helperText: 'Kosongkan untuk tanpa batas',
                           border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(10)),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
                         ),
                       ),
                     ),
@@ -86,18 +99,18 @@ class _DeliveryFeePageState extends State<DeliveryFeePage> {
                   controller: feeController,
                   keyboardType: TextInputType.number,
                   decoration: InputDecoration(
-                    labelText: 'Biaya',
+                    labelText: 'Tarif per km',
                     prefixText: 'Rp ',
                     border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10)),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
                 ),
                 if (fee != null) ...[
                   const SizedBox(height: 8),
                   SwitchListTile(
                     value: isActive,
-                    onChanged: (v) =>
-                        setDialogState(() => isActive = v),
+                    onChanged: (v) => setDialogState(() => isActive = v),
                     title: const Text('Aktif'),
                     contentPadding: EdgeInsets.zero,
                   ),
@@ -107,17 +120,25 @@ class _DeliveryFeePageState extends State<DeliveryFeePage> {
           ),
           actions: [
             TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text('Batal')),
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Batal'),
+            ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary),
+                backgroundColor: AppColors.primary,
+              ),
               onPressed: () async {
                 final name = nameController.text.trim();
                 final min = double.tryParse(minController.text) ?? 0;
-                final max = double.tryParse(maxController.text) ?? 0;
+                final maxText = maxController.text.trim();
+                final max = maxText.isEmpty ? null : double.tryParse(maxText);
                 final feeVal = double.tryParse(feeController.text) ?? 0;
-                if (name.isEmpty || max <= min || feeVal < 0) return;
+                if (name.isEmpty ||
+                    (maxText.isNotEmpty && max == null) ||
+                    (max != null && max <= min) ||
+                    feeVal < 0) {
+                  return;
+                }
 
                 Navigator.pop(ctx);
                 final provider = context.read<AdminProvider>();
@@ -126,21 +147,32 @@ class _DeliveryFeePageState extends State<DeliveryFeePage> {
                   ok = await provider.addDeliveryFee(name, min, max, feeVal);
                 } else {
                   ok = await provider.updateDeliveryFee(
-                      fee.id, name, min, max, feeVal, isActive);
+                    fee.id,
+                    name,
+                    min,
+                    max,
+                    feeVal,
+                    isActive,
+                  );
                 }
                 if (!mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                  content: Text(ok
-                      ? (fee == null
-                          ? 'Ongkir berhasil ditambahkan'
-                          : 'Ongkir berhasil diperbarui')
-                      : 'Gagal menyimpan ongkir'),
-                  backgroundColor:
-                      ok ? AppColors.success : AppColors.error,
-                ));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      ok
+                          ? (fee == null
+                                ? 'Tarif berhasil ditambahkan'
+                                : 'Tarif berhasil diperbarui')
+                          : 'Gagal menyimpan tarif',
+                    ),
+                    backgroundColor: ok ? AppColors.success : AppColors.error,
+                  ),
+                );
               },
-              child: Text(fee == null ? 'Tambah' : 'Simpan',
-                  style: const TextStyle(color: Colors.white)),
+              child: Text(
+                fee == null ? 'Tambah' : 'Simpan',
+                style: const TextStyle(color: Colors.white),
+              ),
             ),
           ],
         ),
@@ -155,7 +187,7 @@ class _DeliveryFeePageState extends State<DeliveryFeePage> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Ongkos Kirim'),
+        title: const Text('Tarif Jemput & Antar'),
         backgroundColor: Colors.white,
         foregroundColor: Colors.black87,
         elevation: 0.5,
@@ -168,61 +200,75 @@ class _DeliveryFeePageState extends State<DeliveryFeePage> {
       body: provider.isLoading
           ? const Center(child: CircularProgressIndicator())
           : provider.deliveryFees.isEmpty
-              ? Center(
-                  child: Text('Belum ada ongkos kirim',
-                      style: TextStyle(color: Colors.grey[600])),
-                )
-              : RefreshIndicator(
-                  onRefresh: _load,
-                  child: ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
-                    itemCount: provider.deliveryFees.length,
-                    itemBuilder: (context, i) {
-                      final f = provider.deliveryFees[i];
-                      return Card(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
-                        child: ListTile(
-                          leading: CircleAvatar(
-                            backgroundColor:
-                                AppColors.secondary.withValues(alpha: 0.15),
-                            child: const Icon(Icons.delivery_dining,
-                                color: AppColors.secondary),
-                          ),
-                          title: Row(
-                            children: [
-                              Text(f.name,
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.bold)),
-                              const SizedBox(width: 8),
-                              if (!f.isActive)
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 6, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: Colors.grey[200],
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                  child: const Text('Nonaktif',
-                                      style: TextStyle(
-                                          fontSize: 10,
-                                          color: Colors.grey)),
-                                ),
-                            ],
-                          ),
-                          subtitle: Text(
-                              '${f.minDistanceKm} - ${f.maxDistanceKm} km · ${formatRupiah(f.fee)}'),
-                          trailing: IconButton(
-                            icon: const Icon(Icons.edit,
-                                color: AppColors.primary),
-                            onPressed: () => _showDialog(fee: f),
-                          ),
+          ? Center(
+              child: Text(
+                'Belum ada ongkos kirim',
+                style: TextStyle(color: Colors.grey[600]),
+              ),
+            )
+          : RefreshIndicator(
+              onRefresh: _load,
+              child: ListView.builder(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
+                itemCount: provider.deliveryFees.length,
+                itemBuilder: (context, i) {
+                  final f = provider.deliveryFees[i];
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor: AppColors.secondary.withValues(
+                          alpha: 0.15,
                         ),
-                      );
-                    },
-                  ),
-                ),
+                        child: const Icon(
+                          Icons.delivery_dining,
+                          color: AppColors.secondary,
+                        ),
+                      ),
+                      title: Row(
+                        children: [
+                          Text(
+                            f.name,
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(width: 8),
+                          if (!f.isActive)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.grey[200],
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: const Text(
+                                'Nonaktif',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                      subtitle: Text(
+                        f.maxDistanceKm == null
+                            ? '${f.minDistanceKm} km ke atas · ${formatRupiah(f.fee)}/km'
+                            : '${f.minDistanceKm} - ${f.maxDistanceKm} km · ${formatRupiah(f.fee)}/km',
+                      ),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.edit, color: AppColors.primary),
+                        onPressed: () => _showDialog(fee: f),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
     );
   }
 }

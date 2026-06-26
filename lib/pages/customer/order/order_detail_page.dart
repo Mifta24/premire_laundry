@@ -34,6 +34,20 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
     return order.status;
   }
 
+  double _billableLaundryWeight(double actualWeightKg) {
+    const minWeightKg = 1.0;
+    final roundedWeightKg = (actualWeightKg * 2).ceil() / 2;
+    return roundedWeightKg < minWeightKg
+        ? minWeightKg
+        : roundedWeightKg.toDouble();
+  }
+
+  String _kiloanWeightText(double? actualWeightKg) {
+    final actual = actualWeightKg ?? 0;
+    final billable = _billableLaundryWeight(actual);
+    return 'Aktual ${actual.toStringAsFixed(1)} kg, tagihan ${billable.toStringAsFixed(1)} kg';
+  }
+
   @override
   void initState() {
     super.initState();
@@ -233,16 +247,20 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
                                   order.orderType == 'kiloan'
                                       ? 'Laundry Kiloan'
                                       : order.orderType == 'satuan'
-                                          ? 'Laundry Satuan'
-                                          : 'Laundry Campuran',
+                                      ? 'Laundry Satuan'
+                                      : 'Laundry Campuran',
                                   style: TextStyle(
-                                      fontSize: 13, color: Colors.grey[600]),
+                                    fontSize: 13,
+                                    color: Colors.grey[600],
+                                  ),
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
                                   formatTanggalIndo(order.createdAt),
                                   style: TextStyle(
-                                      fontSize: 12, color: Colors.grey[500]),
+                                    fontSize: 12,
+                                    color: Colors.grey[500],
+                                  ),
                                 ),
                               ],
                             ),
@@ -277,7 +295,7 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
                         title: Text(item.serviceName),
                         subtitle: Text(
                           item.serviceType == 'kiloan'
-                              ? '${item.weightKg ?? 0} kg'
+                              ? _kiloanWeightText(item.weightKg)
                               : '${item.quantity} pcs',
                         ),
                         trailing: Text(
@@ -310,7 +328,10 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
                       ),
                       const Divider(height: 20),
                       _summaryRow('Subtotal', formatRupiah(order.subtotal)),
-                      _summaryRow('Ongkir', formatRupiah(order.deliveryFee)),
+                      _summaryRow(
+                        'Biaya Jemput & Antar',
+                        formatRupiah(order.deliveryFee),
+                      ),
                       if (order.discountAmount > 0)
                         _summaryRow(
                           'Diskon',

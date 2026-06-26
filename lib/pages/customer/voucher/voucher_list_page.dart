@@ -205,7 +205,8 @@ class _VoucherListPageState extends State<VoucherListPage> {
     if (v.type == 'free_laundry') {
       return (
         title: 'Voucher Gratis 1x Cuci',
-        desc: 'Berlaku untuk semua layanan laundry (kecuali ongkir)',
+        desc:
+            'Berlaku untuk semua layanan laundry (kecuali biaya jemput & antar)',
         color: AppColors.accentPurple,
         pct: '100%',
       );

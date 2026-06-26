@@ -118,7 +118,7 @@ class AdminProvider extends ChangeNotifier {
     return [
       fee.name.trim().toLowerCase(),
       fee.minDistanceKm.toStringAsFixed(2),
-      fee.maxDistanceKm.toStringAsFixed(2),
+      fee.maxDistanceKm?.toStringAsFixed(2) ?? 'open',
       fee.fee.toStringAsFixed(2),
     ].join('|');
   }
@@ -645,7 +645,8 @@ class AdminProvider extends ChangeNotifier {
           .single();
       final serviceName = serviceData['name'] as String? ?? '';
       final pricePerKg = (serviceData['price'] as num).toDouble();
-      final subtotal = weightKg * pricePerKg;
+      final billableWeightKg = _billableLaundryWeight(weightKg);
+      final subtotal = billableWeightKg * pricePerKg;
 
       // Update the kiloan order item chosen by customer, or create it for
       // older orders that were made before kiloan service selection existed.
@@ -732,6 +733,14 @@ class AdminProvider extends ChangeNotifier {
     }
   }
 
+  double _billableLaundryWeight(double actualWeightKg) {
+    const minWeightKg = 1.0;
+    final roundedWeightKg = (actualWeightKg * 2).ceil() / 2;
+    return roundedWeightKg < minWeightKg
+        ? minWeightKg
+        : roundedWeightKg.toDouble();
+  }
+
   Future<bool> addService(
     String name,
     String type,
@@ -808,7 +817,7 @@ class AdminProvider extends ChangeNotifier {
   Future<bool> addDeliveryFee(
     String name,
     double minKm,
-    double maxKm,
+    double? maxKm,
     double fee,
   ) async {
     _setLoading(true);
@@ -836,7 +845,7 @@ class AdminProvider extends ChangeNotifier {
     String feeId,
     String name,
     double minKm,
-    double maxKm,
+    double? maxKm,
     double fee,
     bool isActive,
   ) async {

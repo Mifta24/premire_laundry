@@ -330,7 +330,8 @@ Jika current_cycle_count mencapai 10 → generate voucher dan reset current_cycl
 
 ## 13. delivery_fees
 
-Menyimpan konfigurasi ongkir sederhana.
+Menyimpan konfigurasi tarif ongkir per kilometer berdasarkan rentang jarak.
+Total biaya jemput dan antar dihitung aplikasi sebagai `jarak x fee x 2`.
 
 ```sql
 create table delivery_fees (
@@ -338,7 +339,7 @@ create table delivery_fees (
   name text not null,
   min_distance_km numeric default 0,
   max_distance_km numeric,
-  fee numeric not null default 0,
+  fee numeric not null default 0, -- tarif per km
   is_active boolean default true,
   created_at timestamptz default now(),
   updated_at timestamptz default now()

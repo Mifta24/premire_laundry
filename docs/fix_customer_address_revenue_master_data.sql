@@ -118,12 +118,12 @@ where not exists (
     and lower(btrim(ls.unit)) = lower(btrim(ds.unit))
 );
 
--- Hapus ongkir yang benar-benar identik.
+-- Hapus ongkir yang rentang bisnisnya dobel.
 with duplicate_fees as (
   select
     id,
     row_number() over (
-      partition by lower(btrim(name)), min_distance_km, coalesce(max_distance_km, -1), fee
+      partition by lower(btrim(name)), min_distance_km, coalesce(max_distance_km, -1)
       order by is_active desc, created_at, id
     ) as rn
   from delivery_fees
@@ -137,8 +137,7 @@ create unique index if not exists uniq_delivery_fees_business_identity
   on delivery_fees (
     lower(btrim(name)),
     min_distance_km,
-    coalesce(max_distance_km, -1),
-    fee
+    coalesce(max_distance_km, -1)
   );
 
 commit;

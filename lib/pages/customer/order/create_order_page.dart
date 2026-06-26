@@ -34,6 +34,7 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
   List<AddressModel> _addresses = [];
   List<Map<String, dynamic>> _deliveryFees = [];
   double _deliveryFee = 0;
+  double? _estimatedDistanceKm;
   double _subtotal = 0;
   bool _isLoading = false;
   bool _isSubmitting = false;
@@ -198,7 +199,10 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
     if (_selectedAddress == null ||
         _selectedAddress!.latitude == null ||
         _selectedAddress!.longitude == null) {
-      _deliveryFee = 0;
+      setState(() {
+        _deliveryFee = 0;
+        _estimatedDistanceKm = null;
+      });
       return;
     }
     final dist = _haversineDistance(
@@ -212,11 +216,16 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
       final min = (f['min_distance_km'] as num?)?.toDouble() ?? 0;
       final max = (f['max_distance_km'] as num?)?.toDouble() ?? double.infinity;
       if (dist >= min && dist <= max) {
-        fee = (f['fee'] as num?)?.toDouble() ?? 0;
+        final ratePerKm = (f['fee'] as num?)?.toDouble() ?? 0;
+        final chargeableKm = dist <= 0 ? 0 : dist.ceilToDouble();
+        fee = ratePerKm * chargeableKm * 2;
         break;
       }
     }
-    setState(() => _deliveryFee = fee);
+    setState(() {
+      _deliveryFee = fee;
+      _estimatedDistanceKm = dist;
+    });
   }
 
   void _updateSubtotal() {
@@ -948,11 +957,13 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Estimasi Ongkir',
+                    'Biaya Jemput & Antar',
                     style: TextStyle(fontWeight: FontWeight.w600),
                   ),
                   Text(
-                    'Estimasi waktu jemput: 1-2 jam',
+                    _estimatedDistanceKm == null
+                        ? 'Pilih alamat dengan titik lokasi'
+                        : 'Jarak ${_estimatedDistanceKm!.toStringAsFixed(1)} km x pulang-pergi',
                     style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                   ),
                 ],
@@ -1017,7 +1028,7 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
         child: Column(
           children: [
             _amountRow('Subtotal', formatRupiah(_subtotal)),
-            _amountRow('Ongkir', formatRupiah(_deliveryFee)),
+            _amountRow('Biaya Jemput & Antar', formatRupiah(_deliveryFee)),
             if (_appliedVoucher != null)
               _amountRow('Diskon', '- ${formatRupiah(_discountAmount)}'),
             const Divider(),

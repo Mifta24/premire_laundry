@@ -24,7 +24,10 @@ class AdminAccountPage extends StatelessWidget {
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Keluar', style: TextStyle(color: AppColors.error)),
+            child: const Text(
+              'Keluar',
+              style: TextStyle(color: AppColors.error),
+            ),
           ),
         ],
       ),
@@ -46,7 +49,9 @@ class AdminAccountPage extends StatelessWidget {
       child: Column(
         children: [
           Card(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+            ),
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Row(
@@ -65,9 +70,13 @@ class AdminAccountPage extends StatelessWidget {
                         Row(
                           children: [
                             Expanded(
-                              child: Text(profile?.name ?? '-',
-                                  style: const TextStyle(
-                                      fontSize: 16, fontWeight: FontWeight.bold)),
+                              child: Text(
+                                profile?.name ?? '-',
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                             ),
                             GestureDetector(
                               onTap: () => showEditProfileSheet(context),
@@ -85,25 +94,38 @@ class AdminAccountPage extends StatelessWidget {
                         const SizedBox(height: 4),
                         Text(
                           authProvider.currentUser?.email ?? '',
-                          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[600],
+                          ),
                         ),
                         if (profile != null && profile.phone.isNotEmpty)
                           Padding(
                             padding: const EdgeInsets.only(top: 2),
                             child: Row(
                               children: [
-                                Icon(Icons.phone, size: 13, color: Colors.grey[600]),
+                                Icon(
+                                  Icons.phone,
+                                  size: 13,
+                                  color: Colors.grey[600],
+                                ),
                                 const SizedBox(width: 4),
-                                Text(profile.phone,
-                                    style: TextStyle(
-                                        fontSize: 12, color: Colors.grey[600])),
+                                Text(
+                                  profile.phone,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey[600],
+                                  ),
+                                ),
                               ],
                             ),
                           ),
                         const SizedBox(height: 8),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 3),
+                            horizontal: 10,
+                            vertical: 3,
+                          ),
                           decoration: BoxDecoration(
                             color: AppColors.primary.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(20),
@@ -126,24 +148,32 @@ class AdminAccountPage extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Card(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+            ),
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 16),
               child: Row(
                 children: [
                   Expanded(
                     child: _statColumn(
-                        '${adminProvider.allOrders.length}', 'Total Pesanan'),
+                      '${adminProvider.allOrders.length}',
+                      'Total Pesanan',
+                    ),
                   ),
                   const SizedBox(height: 36, child: VerticalDivider()),
                   Expanded(
                     child: _statColumn(
-                        '${adminProvider.couriers.length}', 'Total Kurir'),
+                      '${adminProvider.couriers.length}',
+                      'Total Kurir',
+                    ),
                   ),
                   const SizedBox(height: 36, child: VerticalDivider()),
                   Expanded(
                     child: _statColumn(
-                        '${adminProvider.services.length}', 'Layanan'),
+                      '${adminProvider.services.length}',
+                      'Layanan',
+                    ),
                   ),
                 ],
               ),
@@ -155,22 +185,36 @@ class AdminAccountPage extends StatelessWidget {
             child: Text(
               'Manajemen',
               style: TextStyle(
-                  fontSize: 14, fontWeight: FontWeight.bold, color: Colors.grey[800]),
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey[800],
+              ),
             ),
           ),
           const SizedBox(height: 8),
           Card(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+            ),
             child: Column(
               children: [
-                _menuTile(Icons.local_laundry_service_outlined, 'Layanan & Harga',
-                    () => context.push('/admin/services')),
+                _menuTile(
+                  Icons.local_laundry_service_outlined,
+                  'Layanan & Harga',
+                  () => context.push('/admin/services'),
+                ),
                 const Divider(height: 1),
-                _menuTile(Icons.delivery_dining_outlined, 'Ongkos Kirim',
-                    () => context.push('/admin/delivery-fees')),
+                _menuTile(
+                  Icons.delivery_dining_outlined,
+                  'Tarif Jemput & Antar',
+                  () => context.push('/admin/delivery-fees'),
+                ),
                 const Divider(height: 1),
-                _menuTile(Icons.store_outlined, 'Pengaturan Toko',
-                    () => context.push('/admin/settings')),
+                _menuTile(
+                  Icons.store_outlined,
+                  'Pengaturan Toko',
+                  () => context.push('/admin/settings'),
+                ),
               ],
             ),
           ),
@@ -180,19 +224,31 @@ class AdminAccountPage extends StatelessWidget {
             child: Text(
               'Akun',
               style: TextStyle(
-                  fontSize: 14, fontWeight: FontWeight.bold, color: Colors.grey[800]),
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey[800],
+              ),
             ),
           ),
           const SizedBox(height: 8),
           Card(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+            ),
             child: Column(
               children: [
-                _menuTile(Icons.lock_outline, 'Ubah Password',
-                    () => showChangePasswordSheet(context)),
+                _menuTile(
+                  Icons.lock_outline,
+                  'Ubah Password',
+                  () => showChangePasswordSheet(context),
+                ),
                 const Divider(height: 1),
-                _menuTile(Icons.logout, 'Keluar', () => _signOut(context),
-                    color: AppColors.error),
+                _menuTile(
+                  Icons.logout,
+                  'Keluar',
+                  () => _signOut(context),
+                  color: AppColors.error,
+                ),
               ],
             ),
           ),
@@ -205,17 +261,28 @@ class AdminAccountPage extends StatelessWidget {
   Widget _statColumn(String value, String label) {
     return Column(
       children: [
-        Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        Text(
+          value,
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
         const SizedBox(height: 4),
         Text(label, style: TextStyle(fontSize: 11, color: Colors.grey[600])),
       ],
     );
   }
 
-  Widget _menuTile(IconData icon, String label, VoidCallback onTap, {Color? color}) {
+  Widget _menuTile(
+    IconData icon,
+    String label,
+    VoidCallback onTap, {
+    Color? color,
+  }) {
     return ListTile(
       leading: Icon(icon, color: color ?? AppColors.primary),
-      title: Text(label, style: TextStyle(color: color, fontWeight: FontWeight.w500)),
+      title: Text(
+        label,
+        style: TextStyle(color: color, fontWeight: FontWeight.w500),
+      ),
       trailing: Icon(Icons.chevron_right, color: Colors.grey[400]),
       onTap: onTap,
     );
