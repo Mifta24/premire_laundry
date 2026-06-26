@@ -12,20 +12,13 @@ import '../../../providers/admin_provider.dart';
 import '../../../widgets/app_button.dart';
 import '../../../widgets/status_badge.dart';
 
-const _stepIcons = [
-  Icons.shopping_bag_outlined,
-  Icons.local_laundry_service_outlined,
-  Icons.iron_outlined,
-  Icons.inventory_2_outlined,
-  Icons.check_circle_outline,
-];
-const _stepLabels = [
-  'Jemput',
-  'Dicuci',
-  'Disetrika',
-  'Siap Diantar',
-  'Selesai',
-];
+class _StatusStep {
+  final String key;
+  final String label;
+  final IconData icon;
+
+  const _StatusStep(this.key, this.label, this.icon);
+}
 
 class AdminOrderDetailPage extends StatefulWidget {
   final String orderId;
@@ -46,6 +39,72 @@ class _AdminOrderDetailPageState extends State<AdminOrderDetailPage> {
   String? _selectedServiceId;
   String _selectedTaskType = 'pickup';
 
+  String _normalizedServiceName(String name) {
+    return name.toLowerCase().replaceAll(RegExp(r'\s+'), ' ').trim();
+  }
+
+  bool _serviceNeedsWashing(String serviceName) {
+    final name = _normalizedServiceName(serviceName);
+    if (name.contains('cuci setrika') || name.contains('cuci lipat')) {
+      return true;
+    }
+    if (name.contains('setrika')) return false;
+    return true;
+  }
+
+  bool _serviceNeedsIroning(String serviceName) {
+    final name = _normalizedServiceName(serviceName);
+    if (name.contains('cuci setrika') || name.contains('setrika')) {
+      return true;
+    }
+    if (name.contains('cuci lipat')) return false;
+    return true;
+  }
+
+  List<String> _productionStatusesFor(OrderModel order) {
+    if (order.orderItems.isEmpty) return const ['washing', 'ironing'];
+
+    final needsWashing = order.orderItems.any(
+      (item) => _serviceNeedsWashing(item.serviceName),
+    );
+    final needsIroning = order.orderItems.any(
+      (item) => _serviceNeedsIroning(item.serviceName),
+    );
+
+    return [if (needsWashing) 'washing', if (needsIroning) 'ironing'];
+  }
+
+  String _firstProductionStatusFor(OrderModel order) {
+    final statuses = _productionStatusesFor(order);
+    return statuses.isNotEmpty ? statuses.first : 'ready_to_deliver';
+  }
+
+  String _statusAfterWashingFor(OrderModel order) {
+    final statuses = _productionStatusesFor(order);
+    final washingIndex = statuses.indexOf('washing');
+    if (washingIndex >= 0 && washingIndex + 1 < statuses.length) {
+      return statuses[washingIndex + 1];
+    }
+    return 'ready_to_deliver';
+  }
+
+  List<_StatusStep> _statusStepsFor(OrderModel order) {
+    final productionStatuses = _productionStatusesFor(order);
+    return [
+      const _StatusStep('pickup', 'Jemput', Icons.shopping_bag_outlined),
+      if (productionStatuses.contains('washing'))
+        const _StatusStep(
+          'washing',
+          'Dicuci',
+          Icons.local_laundry_service_outlined,
+        ),
+      if (productionStatuses.contains('ironing'))
+        const _StatusStep('ironing', 'Disetrika', Icons.iron_outlined),
+      const _StatusStep('ready', 'Siap Diantar', Icons.inventory_2_outlined),
+      const _StatusStep('completed', 'Selesai', Icons.check_circle_outline),
+    ];
+  }
+
   List<String> _nextStatusesFor(OrderModel order) {
     switch (order.status) {
       case 'created':
@@ -62,7 +121,7 @@ class _AdminOrderDetailPageState extends State<AdminOrderDetailPage> {
         return ['received_by_store'];
       case 'received_by_store':
         if (order.orderType == 'kiloan') return ['waiting_weight_input'];
-        return ['washing'];
+        return [_firstProductionStatusFor(order)];
       case 'waiting_weight_input':
         return ['waiting_payment'];
       case 'waiting_payment':
@@ -75,9 +134,9 @@ class _AdminOrderDetailPageState extends State<AdminOrderDetailPage> {
         return const [];
       case 'paid':
         if (order.orderType == 'satuan') return const [];
-        return ['washing'];
+        return [_firstProductionStatusFor(order)];
       case 'washing':
-        return ['ironing'];
+        return [_statusAfterWashingFor(order)];
       case 'ironing':
         return ['ready_to_deliver'];
       case 'ready_to_deliver':
@@ -89,25 +148,31 @@ class _AdminOrderDetailPageState extends State<AdminOrderDetailPage> {
     }
   }
 
-  int _milestoneIndex(String status) {
-    switch (status) {
+  int _stepIndexByKey(List<_StatusStep> steps, String key) {
+    final index = steps.indexWhere((step) => step.key == key);
+    return index >= 0 ? index : 0;
+  }
+
+  int _milestoneIndex(OrderModel order) {
+    final steps = _statusStepsFor(order);
+    switch (order.status) {
       case 'created':
       case 'waiting_pickup':
-        return 0;
       case 'picked_up':
       case 'received_by_store':
       case 'waiting_weight_input':
       case 'waiting_payment':
       case 'paid':
+        return 0;
       case 'washing':
-        return 1;
+        return _stepIndexByKey(steps, 'washing');
       case 'ironing':
-        return 2;
+        return _stepIndexByKey(steps, 'ironing');
       case 'ready_to_deliver':
       case 'out_for_delivery':
-        return 3;
+        return _stepIndexByKey(steps, 'ready');
       case 'completed':
-        return 4;
+        return _stepIndexByKey(steps, 'completed');
       default:
         return 0;
     }
@@ -477,7 +542,8 @@ class _AdminOrderDetailPageState extends State<AdminOrderDetailPage> {
     final canAssignCourier =
         availableTaskTypes.isNotEmpty && selectedCourierId != null;
     final cancelled = order.status == 'cancelled';
-    final milestone = _milestoneIndex(order.status);
+    final statusSteps = _statusStepsFor(order);
+    final milestone = _milestoneIndex(order);
     final canValidatePayment = order.payment?.status == 'waiting_verification';
 
     return Scaffold(
@@ -571,7 +637,9 @@ class _AdminOrderDetailPageState extends State<AdminOrderDetailPage> {
                       ),
                       const SizedBox(height: 12),
                       Row(
-                        children: List.generate(_stepIcons.length * 2 - 1, (i) {
+                        children: List.generate(statusSteps.length * 2 - 1, (
+                          i,
+                        ) {
                           if (i.isOdd) {
                             final lineDone = (i ~/ 2) < milestone;
                             return Expanded(
@@ -584,6 +652,7 @@ class _AdminOrderDetailPageState extends State<AdminOrderDetailPage> {
                             );
                           }
                           final step = i ~/ 2;
+                          final statusStep = statusSteps[step];
                           final done = step <= milestone;
                           return Column(
                             children: [
@@ -597,14 +666,14 @@ class _AdminOrderDetailPageState extends State<AdminOrderDetailPage> {
                                       : Colors.grey[200],
                                 ),
                                 child: Icon(
-                                  _stepIcons[step],
+                                  statusStep.icon,
                                   size: 14,
                                   color: done ? Colors.white : Colors.grey[500],
                                 ),
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                _stepLabels[step],
+                                statusStep.label,
                                 style: TextStyle(
                                   fontSize: 9,
                                   color: done
