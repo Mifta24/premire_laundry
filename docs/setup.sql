@@ -579,6 +579,12 @@ create policy "profiles: courier can read assigned customers"
     )
   );
 
+-- Customer perlu tahu user_id admin untuk mengirim notifikasi "Pesanan Baru"
+-- (lihat _notifyAdminsNewOrder di customer_provider.dart).
+create policy "profiles: authenticated can read admins"
+  on profiles for select
+  using (role = 'admin' and auth.role() = 'authenticated');
+
 -- -------------------------------------
 -- addresses
 -- -------------------------------------

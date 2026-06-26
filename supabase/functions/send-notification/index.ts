@@ -3,6 +3,14 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { initializeApp, cert, getApps } from "npm:firebase-admin/app";
 import { getMessaging } from "npm:firebase-admin/messaging";
 
+// Supabase client (Flutter web) selalu kirim header apikey + x-client-info,
+// jadi keduanya wajib ada di Allow-Headers atau preflight gagal dan request
+// di-block browser sebelum sampai ke function ini.
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
 // Inisialisasi Firebase Admin SDK (singleton)
 function getFirebaseApp() {
   if (getApps().length > 0) return getApps()[0];
@@ -18,12 +26,7 @@ function getFirebaseApp() {
 
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, {
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Headers": "authorization, content-type",
-      },
-    });
+    return new Response(null, { headers: corsHeaders });
   }
 
   try {
@@ -37,7 +40,7 @@ serve(async (req: Request) => {
     if (!userId || !title || !body) {
       return new Response(
         JSON.stringify({ error: "userId, title, dan body wajib diisi" }),
-        { status: 400, headers: { "Content-Type": "application/json" } }
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -68,7 +71,7 @@ serve(async (req: Request) => {
     if (!devices || devices.length === 0) {
       return new Response(
         JSON.stringify({ message: "Tidak ada device aktif untuk user ini" }),
-        { status: 200, headers: { "Content-Type": "application/json" } }
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -121,13 +124,13 @@ serve(async (req: Request) => {
         sent: successCount,
         total: tokens.length,
       }),
-      { status: 200, headers: { "Content-Type": "application/json" } }
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
     console.error("send-notification error:", err);
     return new Response(
       JSON.stringify({ error: String(err) }),
-      { status: 500, headers: { "Content-Type": "application/json" } }
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });
