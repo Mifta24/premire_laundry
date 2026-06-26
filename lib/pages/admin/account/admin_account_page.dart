@@ -211,6 +211,12 @@ class AdminAccountPage extends StatelessWidget {
                 ),
                 const Divider(height: 1),
                 _menuTile(
+                  Icons.local_offer_outlined,
+                  'Kelola Voucher',
+                  () => context.push('/admin/vouchers'),
+                ),
+                const Divider(height: 1),
+                _menuTile(
                   Icons.store_outlined,
                   'Pengaturan Toko',
                   () => context.push('/admin/settings'),

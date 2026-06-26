@@ -8,6 +8,9 @@ class VoucherModel {
   final String status;
   final DateTime? expiredAt;
   final String? usedOrderId;
+  final DateTime? createdAt;
+  final String? customerName;
+  final String? customerPhone;
 
   VoucherModel({
     required this.id,
@@ -19,6 +22,9 @@ class VoucherModel {
     required this.status,
     this.expiredAt,
     this.usedOrderId,
+    this.createdAt,
+    this.customerName,
+    this.customerPhone,
   });
 
   factory VoucherModel.fromJson(Map<String, dynamic> json) {
@@ -38,6 +44,11 @@ class VoucherModel {
           ? DateTime.parse(json['expired_at'] as String)
           : null,
       usedOrderId: json['used_order_id'] as String?,
+      createdAt: json['created_at'] != null
+          ? DateTime.parse(json['created_at'] as String)
+          : null,
+      customerName: json['customer_name'] as String?,
+      customerPhone: json['customer_phone'] as String?,
     );
   }
 

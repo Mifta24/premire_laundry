@@ -8,6 +8,7 @@ import '../models/laundry_service_model.dart';
 import '../models/profile_model.dart';
 import '../models/delivery_fee_model.dart';
 import '../models/courier_task_model.dart';
+import '../models/voucher_model.dart';
 import '../core/services/notification_service.dart';
 
 class AdminProvider extends ChangeNotifier {
@@ -21,6 +22,7 @@ class AdminProvider extends ChangeNotifier {
   List<ProfileModel> _couriers = [];
   List<DeliveryFeeModel> _deliveryFees = [];
   List<CourierTaskModel> _activeCourierTasks = [];
+  List<VoucherModel> _vouchers = [];
   bool _isLoading = false;
   String? _error;
   RealtimeChannel? _channel;
@@ -32,6 +34,7 @@ class AdminProvider extends ChangeNotifier {
   List<ProfileModel> get couriers => _couriers;
   List<DeliveryFeeModel> get deliveryFees => _deliveryFees;
   List<CourierTaskModel> get activeCourierTasks => _activeCourierTasks;
+  List<VoucherModel> get vouchers => _vouchers;
   bool get isLoading => _isLoading;
   String? get error => _error;
 
@@ -327,6 +330,121 @@ class AdminProvider extends ChangeNotifier {
       notifyListeners();
     } catch (e) {
       _setError(e.toString());
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  Future<void> loadVouchers() async {
+    _setLoading(true);
+    _setError(null);
+    try {
+      final data = await _supabase
+          .from('vouchers')
+          .select()
+          .order('created_at', ascending: false);
+      final rows = data as List<dynamic>;
+      final userIds = rows
+          .map((v) => (v as Map<String, dynamic>)['user_id'] as String?)
+          .whereType<String>();
+      final profiles = await _fetchCustomerProfiles(userIds);
+      _vouchers = _uniqueBy(
+        rows.map((v) {
+          final row = Map<String, dynamic>.from(v as Map<String, dynamic>);
+          final profile = profiles[row['user_id']];
+          if (profile != null) {
+            row['customer_name'] = profile['name'];
+            row['customer_phone'] = profile['phone'];
+          }
+          return VoucherModel.fromJson(row);
+        }),
+        (voucher) => voucher.id,
+      );
+      notifyListeners();
+    } catch (e) {
+      _setError(e.toString());
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  Future<List<ProfileModel>> searchCustomers(String query) async {
+    try {
+      final data = await _supabase
+          .from('profiles')
+          .select()
+          .eq('role', 'customer')
+          .or('name.ilike.%$query%,phone.ilike.%$query%')
+          .order('name')
+          .limit(20);
+      return (data as List<dynamic>)
+          .map((p) => ProfileModel.fromJson(p as Map<String, dynamic>))
+          .toList();
+    } catch (e) {
+      _setError(e.toString());
+      return [];
+    }
+  }
+
+  Future<bool> createVoucher({
+    required String userId,
+    required String code,
+    required String type,
+    double? discountPercent,
+    double? maxDiscount,
+    DateTime? expiredAt,
+  }) async {
+    _setLoading(true);
+    _setError(null);
+    try {
+      await _supabase.from('vouchers').insert({
+        'id': _uuid.v4(),
+        'user_id': userId,
+        'code': code,
+        'type': type,
+        'discount_percent': discountPercent,
+        'max_discount': maxDiscount,
+        'status': 'active',
+        'expired_at': expiredAt?.toIso8601String(),
+      });
+      await loadVouchers();
+      return true;
+    } catch (e) {
+      _setError(e.toString());
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  Future<bool> updateVoucher({
+    required String voucherId,
+    required String code,
+    required String type,
+    double? discountPercent,
+    double? maxDiscount,
+    DateTime? expiredAt,
+    required String status,
+  }) async {
+    _setLoading(true);
+    _setError(null);
+    try {
+      await _supabase
+          .from('vouchers')
+          .update({
+            'code': code,
+            'type': type,
+            'discount_percent': discountPercent,
+            'max_discount': maxDiscount,
+            'expired_at': expiredAt?.toIso8601String(),
+            'status': status,
+          })
+          .eq('id', voucherId);
+      await loadVouchers();
+      return true;
+    } catch (e) {
+      _setError(e.toString());
+      return false;
     } finally {
       _setLoading(false);
     }

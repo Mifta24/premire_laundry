@@ -29,6 +29,7 @@ import '../pages/admin/payment/admin_payment_detail_page.dart';
 import '../pages/admin/service/manage_services_page.dart';
 import '../pages/admin/delivery/delivery_fee_page.dart';
 import '../pages/admin/settings/admin_settings_page.dart';
+import '../pages/admin/voucher/admin_voucher_list_page.dart';
 import '../pages/shared/notifications_page.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -211,6 +212,10 @@ class AppRouter {
         GoRoute(
           path: '/admin/settings',
           builder: (context, state) => const AdminSettingsPage(),
+        ),
+        GoRoute(
+          path: '/admin/vouchers',
+          builder: (context, state) => const AdminVoucherListPage(),
         ),
       ],
     );
