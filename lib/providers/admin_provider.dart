@@ -9,7 +9,6 @@ import '../models/profile_model.dart';
 import '../models/delivery_fee_model.dart';
 import '../models/courier_task_model.dart';
 import '../models/voucher_model.dart';
-import '../models/promo_code_model.dart';
 import '../core/services/notification_service.dart';
 
 class AdminProvider extends ChangeNotifier {
@@ -24,7 +23,6 @@ class AdminProvider extends ChangeNotifier {
   List<DeliveryFeeModel> _deliveryFees = [];
   List<CourierTaskModel> _activeCourierTasks = [];
   List<VoucherModel> _vouchers = [];
-  List<PromoCodeModel> _promoCodes = [];
   bool _isLoading = false;
   String? _error;
   RealtimeChannel? _channel;
@@ -37,7 +35,6 @@ class AdminProvider extends ChangeNotifier {
   List<DeliveryFeeModel> get deliveryFees => _deliveryFees;
   List<CourierTaskModel> get activeCourierTasks => _activeCourierTasks;
   List<VoucherModel> get vouchers => _vouchers;
-  List<PromoCodeModel> get promoCodes => _promoCodes;
   bool get isLoading => _isLoading;
   String? get error => _error;
 
@@ -453,81 +450,57 @@ class AdminProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> loadPromoCodes() async {
-    _setLoading(true);
-    _setError(null);
-    try {
-      final data = await _supabase
-          .from('promo_codes')
-          .select()
-          .order('created_at', ascending: false);
-      _promoCodes = _uniqueBy(
-        (data as List<dynamic>).map(
-          (p) => PromoCodeModel.fromJson(p as Map<String, dynamic>),
-        ),
-        (promo) => promo.id,
-      );
-      notifyListeners();
-    } catch (e) {
-      _setError(e.toString());
-    } finally {
-      _setLoading(false);
-    }
-  }
-
-  Future<bool> createPromoCode({
+  /// Buat satu voucher dengan kode yang sama untuk setiap customer yang
+  /// belum pernah order (non-cancelled) - dipakai untuk promo broadcast
+  /// semacam "PREMIER20 buat user baru". Tiap customer dapat baris voucher
+  /// miliknya sendiri, jadi begitu dipakai langsung 'used' untuk dia tapi
+  /// customer baru lain yang belum kebagian tetap bisa pakai kode yang sama.
+  Future<bool> createBroadcastVoucherForNewCustomers({
     required String code,
-    required double discountPercent,
+    required String type,
+    double? discountPercent,
     double? maxDiscount,
-    required bool newUserOnly,
     DateTime? expiredAt,
   }) async {
     _setLoading(true);
     _setError(null);
     try {
-      await _supabase.from('promo_codes').insert({
-        'id': _uuid.v4(),
-        'code': code,
-        'discount_percent': discountPercent,
-        'max_discount': maxDiscount,
-        'new_user_only': newUserOnly,
-        'is_active': true,
-        'expired_at': expiredAt?.toIso8601String(),
-      });
-      await loadPromoCodes();
-      return true;
-    } catch (e) {
-      _setError(e.toString());
-      return false;
-    } finally {
-      _setLoading(false);
-    }
-  }
+      final customers = await _supabase
+          .from('profiles')
+          .select('user_id')
+          .eq('role', 'customer');
+      final customerIds = (customers as List<dynamic>)
+          .map((c) => (c as Map<String, dynamic>)['user_id'] as String)
+          .toSet();
 
-  Future<bool> updatePromoCode({
-    required String promoCodeId,
-    required String code,
-    required double discountPercent,
-    double? maxDiscount,
-    required bool newUserOnly,
-    required bool isActive,
-    DateTime? expiredAt,
-  }) async {
-    _setLoading(true);
-    _setError(null);
-    try {
-      await _supabase
-          .from('promo_codes')
-          .update({
+      final ordersData = await _supabase
+          .from('orders')
+          .select('customer_id')
+          .neq('status', 'cancelled');
+      final customersWithOrders = (ordersData as List<dynamic>)
+          .map((o) => (o as Map<String, dynamic>)['customer_id'] as String)
+          .toSet();
+
+      final newCustomerIds = customerIds.difference(customersWithOrders);
+      if (newCustomerIds.isEmpty) {
+        _setError('Tidak ada user baru (belum pernah order) saat ini');
+        return false;
+      }
+
+      await _supabase.from('vouchers').insert([
+        for (final userId in newCustomerIds)
+          {
+            'id': _uuid.v4(),
+            'user_id': userId,
             'code': code,
+            'type': type,
             'discount_percent': discountPercent,
             'max_discount': maxDiscount,
-            'new_user_only': newUserOnly,
-            'is_active': isActive,
+            'status': 'active',
             'expired_at': expiredAt?.toIso8601String(),
-          })
-          .eq('id', promoCodeId);
-      await loadPromoCodes();
+          },
+      ]);
+      await loadVouchers();
       return true;
     } catch (e) {
       _setError(e.toString());

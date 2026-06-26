@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
@@ -43,6 +44,7 @@ class _CustomerHomePageState extends State<CustomerHomePage> {
       await Future.wait([
         provider.loadOrders(userId),
         provider.loadLoyalty(userId),
+        provider.loadVouchers(userId),
         notifProvider.loadNotifications(userId),
       ]);
     }
@@ -154,6 +156,11 @@ class _CustomerHomePageState extends State<CustomerHomePage> {
         )
         .length;
     final loyaltyPoints = provider.loyaltyPoints?.totalCompletedOrders ?? 0;
+    final activePromoVouchers = provider.vouchers
+        .where((v) => v.status == 'active' && v.type == 'discount')
+        .toList();
+    final promoVoucher =
+        activePromoVouchers.isEmpty ? null : activePromoVouchers.first;
 
     return RefreshIndicator(
       onRefresh: _loadData,
@@ -260,69 +267,81 @@ class _CustomerHomePageState extends State<CustomerHomePage> {
                 ),
               ),
 
-              const SizedBox(height: 20),
+              if (promoVoucher != null) ...[
+                const SizedBox(height: 20),
 
-              // Promo banner
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [AppColors.primary, AppColors.secondary],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
+                // Promo banner - tampil kalau customer punya voucher diskon
+                // aktif (mis. promo broadcast user baru). Tap buat copy kode.
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: InkWell(
                     borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: const [
-                            Text(
-                              'DISKON 20%',
+                    onTap: () {
+                      Clipboard.setData(ClipboardData(text: promoVoucher.code));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Kode disalin: ${promoVoucher.code}')),
+                      );
+                    },
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [AppColors.primary, AppColors.secondary],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'DISKON ${promoVoucher.discountPercent?.toStringAsFixed(0) ?? 0}%',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Semua layanan, gunakan kode ${promoVoucher.code}',
+                                  style: const TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.accentPurple,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: const Text(
+                              'Promo',
                               style: TextStyle(
                                 color: Colors.white,
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            SizedBox(height: 4),
-                            Text(
-                              'Semua layanan, gunakan kode PREMIER20',
-                              style: TextStyle(
-                                color: Colors.white70,
                                 fontSize: 12,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
-                          ],
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.accentPurple,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: const Text(
-                          'Promo',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
                           ),
-                        ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
                 ),
-              ),
+              ],
 
               const SizedBox(height: 20),
 
