@@ -121,22 +121,17 @@ class NotificationService {
 
       final supabase = Supabase.instance.client;
 
-      // Cek token sudah ada atau belum
-      final existing = await supabase
-          .from('user_devices')
-          .select('id')
-          .eq('user_id', userId)
-          .eq('fcm_token', token)
-          .maybeSingle();
-
-      if (existing == null) {
-        await supabase.from('user_devices').upsert({
-          'user_id': userId,
-          'fcm_token': token,
-          'platform': Platform.isAndroid ? 'android' : 'ios',
-          'is_active': true,
-        }, onConflict: 'user_id,fcm_token');
-      }
+      // Selalu upsert is_active: true, termasuk saat baris sudah ada tapi
+      // sempat dinonaktifkan (mis. logout sebelumnya). Token FCM biasanya
+      // stabil antar login, jadi tanpa ini baris yang sudah ada akan
+      // permanen is_active: false dan push tidak akan pernah terkirim lagi
+      // ke device tersebut.
+      await supabase.from('user_devices').upsert({
+        'user_id': userId,
+        'fcm_token': token,
+        'platform': Platform.isAndroid ? 'android' : 'ios',
+        'is_active': true,
+      }, onConflict: 'user_id,fcm_token');
 
       // Pantau refresh token
       _messaging.onTokenRefresh.listen((newToken) async {

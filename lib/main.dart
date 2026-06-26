@@ -64,7 +64,8 @@ class PremierLaundryApp extends StatefulWidget {
   State<PremierLaundryApp> createState() => _PremierLaundryAppState();
 }
 
-class _PremierLaundryAppState extends State<PremierLaundryApp> {
+class _PremierLaundryAppState extends State<PremierLaundryApp>
+    with WidgetsBindingObserver {
   late final GoRouter _router;
   StreamSubscription<AuthState>? _authStateSubscription;
 
@@ -78,12 +79,28 @@ class _PremierLaundryAppState extends State<PremierLaundryApp> {
             _router.go('/reset-password');
           }
         });
+    WidgetsBinding.instance.addObserver(this);
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _authStateSubscription?.cancel();
     super.dispose();
+  }
+
+  // Saat app balik ke foreground, pastikan baris user_devices milik akun
+  // yang sedang login berstatus aktif. Mencegah notifikasi push tidak
+  // terkirim gara-gara token sempat dinonaktifkan (mis. logout akun lain
+  // di device yang sama) tapi belum diaktifkan ulang.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      final userId = Supabase.instance.client.auth.currentUser?.id;
+      if (userId != null) {
+        NotificationService().saveTokenToSupabase(userId);
+      }
+    }
   }
 
   @override
