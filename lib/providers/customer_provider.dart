@@ -6,6 +6,7 @@ import '../models/order_model.dart';
 import '../models/address_model.dart';
 import '../models/voucher_model.dart';
 import '../models/loyalty_model.dart';
+import '../models/promo_code_model.dart';
 import '../core/services/notification_service.dart';
 
 class CustomerProvider extends ChangeNotifier {
@@ -16,6 +17,7 @@ class CustomerProvider extends ChangeNotifier {
   List<AddressModel> _addresses = [];
   List<VoucherModel> _vouchers = [];
   LoyaltyModel? _loyaltyPoints;
+  PromoCodeModel? _eligiblePromo;
   bool _isLoading = false;
   String? _error;
   RealtimeChannel? _channel;
@@ -25,6 +27,7 @@ class CustomerProvider extends ChangeNotifier {
   List<AddressModel> get addresses => _addresses;
   List<VoucherModel> get vouchers => _vouchers;
   LoyaltyModel? get loyaltyPoints => _loyaltyPoints;
+  PromoCodeModel? get eligiblePromo => _eligiblePromo;
   bool get isLoading => _isLoading;
   String? get error => _error;
 
@@ -148,9 +151,112 @@ class CustomerProvider extends ChangeNotifier {
     }
   }
 
+  // "User baru" = belum pernah punya order yang tidak dibatalkan. Dipakai
+  // untuk syarat promo broadcast (mis. PREMIER20) yang cuma boleh dipakai
+  // sekali oleh user yang belum pernah order. excludeOrderId dipakai saat
+  // order yang sedang dibuat/diisi sudah tersimpan di DB, supaya order itu
+  // sendiri tidak ikut dihitung sebagai "riwayat".
+  Future<bool> _isNewCustomer(String userId, {String? excludeOrderId}) async {
+    var query = _supabase
+        .from('orders')
+        .select('id')
+        .eq('customer_id', userId)
+        .neq('status', 'cancelled');
+    if (excludeOrderId != null) {
+      query = query.neq('id', excludeOrderId);
+    }
+    final data = await query.limit(1);
+    return (data as List).isEmpty;
+  }
+
+  Future<PromoCodeModel?> _findEligiblePromoCode(
+    String code,
+    String userId, {
+    String? excludeOrderId,
+  }) async {
+    final data = await _supabase
+        .from('promo_codes')
+        .select()
+        .eq('code', code)
+        .eq('is_active', true)
+        .maybeSingle();
+    if (data == null) return null;
+    final promo = PromoCodeModel.fromJson(data);
+    if (promo.expiredAt != null && promo.expiredAt!.isBefore(DateTime.now())) {
+      return null;
+    }
+    if (promo.newUserOnly &&
+        !await _isNewCustomer(userId, excludeOrderId: excludeOrderId)) {
+      return null;
+    }
+    final redeemed = await _supabase
+        .from('promo_code_redemptions')
+        .select('id')
+        .eq('promo_code_id', promo.id)
+        .eq('user_id', userId)
+        .maybeSingle();
+    if (redeemed != null) return null;
+    return promo;
+  }
+
+  /// Cari promo broadcast (mis. PREMIER20) yang masih bisa dipakai user ini,
+  /// untuk ditampilkan sebagai banner di dashboard.
+  Future<void> loadEligiblePromo(String userId) async {
+    try {
+      final data = await _supabase
+          .from('promo_codes')
+          .select()
+          .eq('is_active', true)
+          .order('created_at', ascending: false);
+      for (final row in data as List) {
+        final promo = PromoCodeModel.fromJson(row as Map<String, dynamic>);
+        final eligible = await _findEligiblePromoCode(promo.code, userId);
+        if (eligible != null) {
+          _eligiblePromo = eligible;
+          notifyListeners();
+          return;
+        }
+      }
+      _eligiblePromo = null;
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Gagal memuat promo: $e');
+    }
+  }
+
+  /// Tandai kode promo broadcast terpakai oleh user ini secara atomik.
+  /// Mengandalkan unique constraint (promo_code_id, user_id) di DB sebagai
+  /// pertahanan utama dari race condition, bukan cek eligibilitas di atas
+  /// yang cuma untuk pesan error yang lebih jelas.
+  Future<bool> _redeemPromoCode({
+    required String code,
+    required String userId,
+    required String orderId,
+  }) async {
+    try {
+      final promo = await _findEligiblePromoCode(
+        code,
+        userId,
+        excludeOrderId: orderId,
+      );
+      if (promo == null) return false;
+      await _supabase.from('promo_code_redemptions').insert({
+        'id': _uuid.v4(),
+        'promo_code_id': promo.id,
+        'user_id': userId,
+        'order_id': orderId,
+      });
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
   // Validasi voucher sebelum dipakai: harus milik user, masih 'active',
   // dan belum kedaluwarsa. Dipanggil saat user menekan "Terapkan" di
-  // halaman buat pesanan, sebelum diskonnya dihitung & ditampilkan.
+  // halaman buat pesanan, sebelum diskonnya dihitung & ditampilkan. Kalau
+  // bukan voucher pribadi, coba cocokkan ke kode promo broadcast (mis.
+  // PREMIER20) yang berlaku untuk banyak user sekaligus.
   Future<VoucherModel?> validateVoucher({
     required String userId,
     required String code,
@@ -163,21 +269,35 @@ class CustomerProvider extends ChangeNotifier {
           .eq('code', code)
           .eq('user_id', userId)
           .maybeSingle();
-      if (data == null) {
-        _setError('Voucher tidak ditemukan atau bukan milik Anda');
+      if (data != null) {
+        final voucher = VoucherModel.fromJson(data);
+        if (voucher.status != 'active') {
+          _setError('Voucher sudah digunakan atau tidak aktif');
+          return null;
+        }
+        if (voucher.expiredAt != null &&
+            voucher.expiredAt!.isBefore(DateTime.now())) {
+          _setError('Voucher sudah kedaluwarsa');
+          return null;
+        }
+        return voucher;
+      }
+
+      final promo = await _findEligiblePromoCode(code, userId);
+      if (promo == null) {
+        _setError('Voucher/kode promo tidak ditemukan atau sudah dipakai');
         return null;
       }
-      final voucher = VoucherModel.fromJson(data);
-      if (voucher.status != 'active') {
-        _setError('Voucher sudah digunakan atau tidak aktif');
-        return null;
-      }
-      if (voucher.expiredAt != null &&
-          voucher.expiredAt!.isBefore(DateTime.now())) {
-        _setError('Voucher sudah kedaluwarsa');
-        return null;
-      }
-      return voucher;
+      return VoucherModel(
+        id: promo.id,
+        userId: userId,
+        code: promo.code,
+        type: 'discount',
+        discountPercent: promo.discountPercent,
+        maxDiscount: promo.maxDiscount,
+        status: 'active',
+        expiredAt: promo.expiredAt,
+      );
     } catch (e) {
       _setError(e.toString());
       return null;
@@ -276,7 +396,17 @@ class CustomerProvider extends ChangeNotifier {
             .eq('status', 'active')
             .or('expired_at.is.null,expired_at.gt.$now')
             .select();
-        if ((updated as List).isEmpty) {
+        // Bukan voucher pribadi - mungkin kode promo broadcast (mis.
+        // PREMIER20) yang berlaku untuk banyak user sekaligus.
+        final voucherUsed = (updated as List).isNotEmpty;
+        final promoUsed = voucherUsed
+            ? true
+            : await _redeemPromoCode(
+                code: voucherCode,
+                userId: customerId,
+                orderId: orderId,
+              );
+        if (!promoUsed) {
           await _supabase.from('order_items').delete().eq('order_id', orderId);
           await _supabase.from('orders').delete().eq('id', orderId);
           _setError('Voucher tidak valid, kedaluwarsa, atau sudah digunakan');
@@ -533,8 +663,59 @@ class CustomerProvider extends ChangeNotifier {
           .eq('code', code)
           .eq('user_id', customerId)
           .maybeSingle();
+
       if (voucherData == null) {
-        throw Exception('Voucher tidak ditemukan atau bukan milik Anda');
+        // Bukan voucher pribadi - mungkin kode promo broadcast (mis.
+        // PREMIER20) yang berlaku untuk banyak user sekaligus.
+        final promo = await _findEligiblePromoCode(
+          code,
+          customerId,
+          excludeOrderId: orderId,
+        );
+        if (promo == null) {
+          throw Exception('Voucher/kode promo tidak ditemukan atau sudah dipakai');
+        }
+
+        final discount = _calculateVoucherDiscount(
+          subtotal: subtotal,
+          discountPercent: promo.discountPercent,
+          maxDiscount: promo.maxDiscount,
+        );
+        if (discount <= 0) {
+          throw Exception('Voucher tidak memberi diskon untuk pesanan ini');
+        }
+
+        final redemptionId = _uuid.v4();
+        try {
+          await _supabase.from('promo_code_redemptions').insert({
+            'id': redemptionId,
+            'promo_code_id': promo.id,
+            'user_id': customerId,
+            'order_id': orderId,
+          });
+        } catch (e) {
+          throw Exception('Voucher tidak valid, kedaluwarsa, atau sudah digunakan');
+        }
+
+        try {
+          await _supabase
+              .from('orders')
+              .update({
+                'discount_amount': discount,
+                'total_amount': subtotal + deliveryFee - discount,
+              })
+              .eq('id', orderId)
+              .eq('customer_id', customerId)
+              .eq('payment_status', 'pending');
+        } catch (e) {
+          await _supabase
+              .from('promo_code_redemptions')
+              .delete()
+              .eq('id', redemptionId);
+          rethrow;
+        }
+
+        return true;
       }
 
       final voucher = VoucherModel.fromJson(voucherData);

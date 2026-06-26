@@ -490,6 +490,76 @@ class _AdminOrderDetailPageState extends State<AdminOrderDetailPage> {
     }
   }
 
+  bool _canEditOrder(OrderModel order) {
+    return order.status != 'completed' && order.status != 'cancelled';
+  }
+
+  bool _canCancelOrder(OrderModel order) {
+    return _nextStatusesFor(order).contains('cancelled');
+  }
+
+  Future<void> _showEditNotesDialog() async {
+    if (_order == null) return;
+    final controller = TextEditingController(text: _order!.notes ?? '');
+    final notes = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Edit Catatan Pesanan'),
+        content: TextField(
+          controller: controller,
+          maxLines: 4,
+          decoration: const InputDecoration(
+            labelText: 'Catatan pakaian',
+            alignLabelWithHint: true,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Batal'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, controller.text),
+            child: const Text('Simpan'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (notes == null || !mounted) return;
+
+    final provider = context.read<AdminProvider>();
+    final ok = await provider.updateOrderNotes(widget.orderId, notes);
+    if (!mounted) return;
+    if (ok) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Catatan pesanan berhasil diperbarui'),
+          backgroundColor: AppColors.success,
+        ),
+      );
+      await _loadData();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(provider.error ?? 'Gagal memperbarui catatan'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    }
+  }
+
+  void _handleOrderAction(String value) {
+    switch (value) {
+      case 'edit_notes':
+        _showEditNotesDialog();
+        break;
+      case 'cancel':
+        _updateStatus('cancelled');
+        break;
+    }
+  }
+
   Future<void> _callCustomer(String phone) async {
     final uri = Uri.parse('tel:$phone');
     if (await canLaunchUrl(uri)) {
@@ -554,6 +624,29 @@ class _AdminOrderDetailPageState extends State<AdminOrderDetailPage> {
         elevation: 0.5,
         actions: [
           IconButton(icon: const Icon(Icons.refresh), onPressed: _loadData),
+          PopupMenuButton<String>(
+            onSelected: _handleOrderAction,
+            itemBuilder: (context) => [
+              PopupMenuItem(
+                value: 'edit_notes',
+                enabled: _canEditOrder(order),
+                child: const ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(Icons.edit_note_outlined),
+                  title: Text('Edit Catatan'),
+                ),
+              ),
+              PopupMenuItem(
+                value: 'cancel',
+                enabled: _canCancelOrder(order),
+                child: const ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(Icons.cancel_outlined, color: AppColors.error),
+                  title: Text('Batalkan Pesanan'),
+                ),
+              ),
+            ],
+          ),
         ],
       ),
       backgroundColor: AppColors.background,

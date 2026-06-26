@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/currency_formatter.dart';
+import '../../../core/utils/date_formatter.dart';
 import '../../../providers/admin_provider.dart';
 
 class AdminReportPage extends StatefulWidget {
@@ -28,19 +29,23 @@ class _AdminReportPageState extends State<AdminReportPage> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(isValid ? 'Validasi Pembayaran' : 'Tolak Pembayaran'),
-        content: Text(isValid
-            ? 'Konfirmasi pembayaran ini sebagai valid?'
-            : 'Tolak pembayaran ini?'),
+        content: Text(
+          isValid
+              ? 'Konfirmasi pembayaran ini sebagai valid?'
+              : 'Tolak pembayaran ini?',
+        ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Batal')),
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Batal'),
+          ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             child: Text(
               isValid ? 'Validasi' : 'Tolak',
               style: TextStyle(
-                  color: isValid ? AppColors.success : AppColors.error),
+                color: isValid ? AppColors.success : AppColors.error,
+              ),
             ),
           ),
         ],
@@ -55,15 +60,17 @@ class _AdminReportPageState extends State<AdminReportPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-              isValid ? 'Pembayaran berhasil divalidasi' : 'Pembayaran ditolak'),
+            isValid ? 'Pembayaran berhasil divalidasi' : 'Pembayaran ditolak',
+          ),
           backgroundColor: isValid ? AppColors.success : AppColors.error,
         ),
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-            content: Text(provider.error ?? 'Operasi gagal'),
-            backgroundColor: AppColors.error),
+          content: Text(provider.error ?? 'Operasi gagal'),
+          backgroundColor: AppColors.error,
+        ),
       );
     }
   }
@@ -71,8 +78,9 @@ class _AdminReportPageState extends State<AdminReportPage> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<AdminProvider>();
-    final orderCompletedCount =
-        provider.allOrders.where((o) => o.status == 'completed').length;
+    final orderCompletedCount = provider.allOrders
+        .where((o) => o.status == 'completed')
+        .length;
 
     return RefreshIndicator(
       onRefresh: _load,
@@ -87,21 +95,38 @@ class _AdminReportPageState extends State<AdminReportPage> {
             crossAxisSpacing: 12,
             childAspectRatio: 1.5,
             children: [
-              _statCard('Pendapatan Hari Ini',
-                  formatRupiah(provider.todayRevenue), AppColors.primary),
-              _statCard('Pendapatan Bulan Ini',
-                  formatRupiah(provider.monthRevenue), AppColors.secondary),
-              _statCard('Order Selesai', '$orderCompletedCount', AppColors.success),
-              _statCard('Payment Pending', '${provider.pendingPayments.length}',
-                  AppColors.warning),
+              _statCard(
+                'Pendapatan Hari Ini',
+                formatRupiah(provider.todayRevenue),
+                AppColors.primary,
+              ),
+              _statCard(
+                'Pendapatan Bulan Ini',
+                formatRupiah(provider.monthRevenue),
+                AppColors.secondary,
+              ),
+              _statCard(
+                'Order Selesai',
+                '$orderCompletedCount',
+                AppColors.success,
+              ),
+              _statCard(
+                'Payment Pending',
+                '${provider.pendingPayments.length}',
+                AppColors.warning,
+              ),
             ],
           ),
           const SizedBox(height: 20),
-          const Text('Tren Pendapatan (7 Hari Terakhir)',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          const Text(
+            'Tren Pendapatan (7 Hari Terakhir)',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 12),
           Card(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+            ),
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: SizedBox(
@@ -111,15 +136,19 @@ class _AdminReportPageState extends State<AdminReportPage> {
             ),
           ),
           const SizedBox(height: 20),
-          const Text('Verifikasi Pembayaran',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          const Text(
+            'Verifikasi Pembayaran',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 12),
           if (provider.pendingPayments.isEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 24),
               child: Center(
-                child: Text('Tidak ada pembayaran menunggu verifikasi',
-                    style: TextStyle(color: Colors.grey[600])),
+                child: Text(
+                  'Tidak ada pembayaran menunggu verifikasi',
+                  style: TextStyle(color: Colors.grey[600]),
+                ),
               ),
             )
           else
@@ -129,8 +158,9 @@ class _AdminReportPageState extends State<AdminReportPage> {
                   .firstOrNull;
               return Card(
                 margin: const EdgeInsets.only(bottom: 10),
-                shape:
-                    RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
                 child: Padding(
                   padding: const EdgeInsets.all(14),
                   child: Column(
@@ -151,8 +181,10 @@ class _AdminReportPageState extends State<AdminReportPage> {
                                     width: 48,
                                     height: 48,
                                     color: Colors.grey[200],
-                                    child: const Icon(Icons.receipt,
-                                        color: Colors.grey),
+                                    child: const Icon(
+                                      Icons.receipt,
+                                      color: Colors.grey,
+                                    ),
                                   ),
                           ),
                           const SizedBox(width: 12),
@@ -160,29 +192,41 @@ class _AdminReportPageState extends State<AdminReportPage> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(order?.customerName ?? 'Pelanggan',
-                                    style: const TextStyle(
-                                        fontWeight: FontWeight.bold, fontSize: 13)),
+                                Text(
+                                  order?.customerName ?? 'Pelanggan',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                  ),
+                                ),
                                 Text(
                                   order?.orderCode ??
-                                      payment.orderId.substring(0, 8).toUpperCase(),
+                                      payment.orderId
+                                          .substring(0, 8)
+                                          .toUpperCase(),
                                   style: TextStyle(
-                                      fontSize: 11, color: Colors.grey[600]),
+                                    fontSize: 11,
+                                    color: Colors.grey[600],
+                                  ),
                                 ),
                                 Text(
                                   payment.method == 'manual_qris'
                                       ? 'QRIS Manual'
                                       : payment.method == 'xendit'
-                                          ? 'Xendit'
-                                          : payment.method,
+                                      ? 'Xendit'
+                                      : payment.method,
                                   style: TextStyle(
-                                      fontSize: 11, color: Colors.grey[600]),
+                                    fontSize: 11,
+                                    color: Colors.grey[600],
+                                  ),
                                 ),
                               ],
                             ),
                           ),
-                          Text(formatRupiah(payment.amount),
-                              style: const TextStyle(fontWeight: FontWeight.bold)),
+                          Text(
+                            formatRupiah(payment.amount),
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
                         ],
                       ),
                       const SizedBox(height: 8),
@@ -197,15 +241,17 @@ class _AdminReportPageState extends State<AdminReportPage> {
                           OutlinedButton(
                             onPressed: () => _validate(payment.id, false),
                             style: OutlinedButton.styleFrom(
-                                foregroundColor: AppColors.error,
-                                side: const BorderSide(color: AppColors.error)),
+                              foregroundColor: AppColors.error,
+                              side: const BorderSide(color: AppColors.error),
+                            ),
                             child: const Text('Tolak'),
                           ),
                           const SizedBox(width: 8),
                           ElevatedButton(
                             onPressed: () => _validate(payment.id, true),
                             style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.success),
+                              backgroundColor: AppColors.success,
+                            ),
                             child: const Text('Valid'),
                           ),
                         ],
@@ -229,11 +275,19 @@ class _AdminReportPageState extends State<AdminReportPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(value,
-                style: TextStyle(
-                    fontSize: 16, fontWeight: FontWeight.bold, color: color)),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+            ),
             const SizedBox(height: 4),
-            Text(label, style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+            Text(
+              label,
+              style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+            ),
           ],
         ),
       ),
@@ -249,20 +303,113 @@ class _RevenueChart extends StatelessWidget {
   Widget build(BuildContext context) {
     if (data.every((v) => v == 0)) {
       return Center(
-        child: Text('Belum ada data pendapatan',
-            style: TextStyle(color: Colors.grey[500], fontSize: 12)),
+        child: Text(
+          'Belum ada data pendapatan',
+          style: TextStyle(color: Colors.grey[500], fontSize: 12),
+        ),
       );
     }
-    return CustomPaint(
-      size: Size.infinite,
-      painter: _RevenueChartPainter(data),
+    return _InteractiveRevenueChart(data: data);
+  }
+}
+
+class _InteractiveRevenueChart extends StatefulWidget {
+  final List<double> data;
+  const _InteractiveRevenueChart({required this.data});
+
+  @override
+  State<_InteractiveRevenueChart> createState() =>
+      _InteractiveRevenueChartState();
+}
+
+class _InteractiveRevenueChartState extends State<_InteractiveRevenueChart> {
+  int _selectedIndex = 6;
+
+  DateTime _dateForIndex(int index) {
+    final now = DateTime.now();
+    return DateTime(
+      now.year,
+      now.month,
+      now.day,
+    ).subtract(Duration(days: 6 - index));
+  }
+
+  void _selectPoint(Offset localPosition, double width) {
+    if (widget.data.length <= 1 || width <= 0) return;
+    final stepX = width / (widget.data.length - 1);
+    final index = (localPosition.dx / stepX).round().clamp(
+      0,
+      widget.data.length - 1,
+    );
+    setState(() => _selectedIndex = index);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final selectedAmount = widget.data[_selectedIndex];
+    final selectedDate = _dateForIndex(_selectedIndex);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          decoration: BoxDecoration(
+            color: AppColors.primary.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            children: [
+              const Icon(
+                Icons.info_outline,
+                size: 16,
+                color: AppColors.primary,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  '${formatTanggalSingkat(selectedDate)}: ${formatRupiah(selectedAmount)}',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 10),
+        Expanded(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTapDown: (details) =>
+                    _selectPoint(details.localPosition, constraints.maxWidth),
+                onHorizontalDragUpdate: (details) =>
+                    _selectPoint(details.localPosition, constraints.maxWidth),
+                child: CustomPaint(
+                  size: Size.infinite,
+                  painter: _RevenueChartPainter(
+                    widget.data,
+                    selectedIndex: _selectedIndex,
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 }
 
 class _RevenueChartPainter extends CustomPainter {
   final List<double> data;
-  _RevenueChartPainter(this.data);
+  final int selectedIndex;
+
+  _RevenueChartPainter(this.data, {required this.selectedIndex});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -275,6 +422,13 @@ class _RevenueChartPainter extends CustomPainter {
       ..strokeWidth = 2.5
       ..style = PaintingStyle.stroke;
     final dotPaint = Paint()..color = AppColors.primary;
+    final selectedDotPaint = Paint()..color = AppColors.secondary;
+    final selectedRingPaint = Paint()
+      ..color = AppColors.secondary.withValues(alpha: 0.22)
+      ..style = PaintingStyle.fill;
+    final guidePaint = Paint()
+      ..color = AppColors.secondary.withValues(alpha: 0.45)
+      ..strokeWidth = 1;
     final fillPaint = Paint()
       ..color = AppColors.primary.withValues(alpha: 0.08)
       ..style = PaintingStyle.fill;
@@ -299,12 +453,19 @@ class _RevenueChartPainter extends CustomPainter {
     }
     canvas.drawPath(linePath, linePaint);
 
-    for (final p in points) {
-      canvas.drawCircle(p, 4, dotPaint);
+    for (var i = 0; i < points.length; i++) {
+      final p = points[i];
+      if (i == selectedIndex) {
+        canvas.drawLine(Offset(p.dx, 0), Offset(p.dx, size.height), guidePaint);
+        canvas.drawCircle(p, 8, selectedRingPaint);
+        canvas.drawCircle(p, 5, selectedDotPaint);
+      } else {
+        canvas.drawCircle(p, 4, dotPaint);
+      }
     }
   }
 
   @override
   bool shouldRepaint(covariant _RevenueChartPainter oldDelegate) =>
-      oldDelegate.data != data;
+      oldDelegate.data != data || oldDelegate.selectedIndex != selectedIndex;
 }

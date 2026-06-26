@@ -9,6 +9,7 @@ import '../models/profile_model.dart';
 import '../models/delivery_fee_model.dart';
 import '../models/courier_task_model.dart';
 import '../models/voucher_model.dart';
+import '../models/promo_code_model.dart';
 import '../core/services/notification_service.dart';
 
 class AdminProvider extends ChangeNotifier {
@@ -23,6 +24,7 @@ class AdminProvider extends ChangeNotifier {
   List<DeliveryFeeModel> _deliveryFees = [];
   List<CourierTaskModel> _activeCourierTasks = [];
   List<VoucherModel> _vouchers = [];
+  List<PromoCodeModel> _promoCodes = [];
   bool _isLoading = false;
   String? _error;
   RealtimeChannel? _channel;
@@ -35,6 +37,7 @@ class AdminProvider extends ChangeNotifier {
   List<DeliveryFeeModel> get deliveryFees => _deliveryFees;
   List<CourierTaskModel> get activeCourierTasks => _activeCourierTasks;
   List<VoucherModel> get vouchers => _vouchers;
+  List<PromoCodeModel> get promoCodes => _promoCodes;
   bool get isLoading => _isLoading;
   String? get error => _error;
 
@@ -450,6 +453,90 @@ class AdminProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> loadPromoCodes() async {
+    _setLoading(true);
+    _setError(null);
+    try {
+      final data = await _supabase
+          .from('promo_codes')
+          .select()
+          .order('created_at', ascending: false);
+      _promoCodes = _uniqueBy(
+        (data as List<dynamic>).map(
+          (p) => PromoCodeModel.fromJson(p as Map<String, dynamic>),
+        ),
+        (promo) => promo.id,
+      );
+      notifyListeners();
+    } catch (e) {
+      _setError(e.toString());
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  Future<bool> createPromoCode({
+    required String code,
+    required double discountPercent,
+    double? maxDiscount,
+    required bool newUserOnly,
+    DateTime? expiredAt,
+  }) async {
+    _setLoading(true);
+    _setError(null);
+    try {
+      await _supabase.from('promo_codes').insert({
+        'id': _uuid.v4(),
+        'code': code,
+        'discount_percent': discountPercent,
+        'max_discount': maxDiscount,
+        'new_user_only': newUserOnly,
+        'is_active': true,
+        'expired_at': expiredAt?.toIso8601String(),
+      });
+      await loadPromoCodes();
+      return true;
+    } catch (e) {
+      _setError(e.toString());
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  Future<bool> updatePromoCode({
+    required String promoCodeId,
+    required String code,
+    required double discountPercent,
+    double? maxDiscount,
+    required bool newUserOnly,
+    required bool isActive,
+    DateTime? expiredAt,
+  }) async {
+    _setLoading(true);
+    _setError(null);
+    try {
+      await _supabase
+          .from('promo_codes')
+          .update({
+            'code': code,
+            'discount_percent': discountPercent,
+            'max_discount': maxDiscount,
+            'new_user_only': newUserOnly,
+            'is_active': isActive,
+            'expired_at': expiredAt?.toIso8601String(),
+          })
+          .eq('id', promoCodeId);
+      await loadPromoCodes();
+      return true;
+    } catch (e) {
+      _setError(e.toString());
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
   // Pesan untuk customer tiap kali admin memajukan status order. Status yang
   // tidak ada di sini (mis. 'waiting_weight_input') tidak cukup penting
   // untuk customer sehingga tidak dikirim notif.
@@ -519,6 +606,24 @@ class AdminProvider extends ChangeNotifier {
           .eq('id', orderId);
 
       await _notifyCustomerOrderStatus(orderId, status);
+      await loadAllOrders();
+      return true;
+    } catch (e) {
+      _setError(e.toString());
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  Future<bool> updateOrderNotes(String orderId, String notes) async {
+    _setLoading(true);
+    _setError(null);
+    try {
+      await _supabase
+          .from('orders')
+          .update({'notes': notes.trim().isEmpty ? null : notes.trim()})
+          .eq('id', orderId);
       await loadAllOrders();
       return true;
     } catch (e) {

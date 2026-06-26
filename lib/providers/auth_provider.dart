@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../core/utils/error_message_formatter.dart';
 import '../core/services/notification_service.dart';
 import '../models/profile_model.dart';
 
@@ -36,7 +37,7 @@ class AuthProvider extends ChangeNotifier {
         await loadProfile();
       }
     } catch (e) {
-      _error = e.toString();
+      _error = friendlyErrorMessage(e);
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -59,7 +60,7 @@ class AuthProvider extends ChangeNotifier {
       }
       return false;
     } on AuthException catch (e) {
-      _setError(e.message);
+      _setError(friendlyAuthErrorMessage(e.message));
       return false;
     } catch (e) {
       _setError('Terjadi kesalahan. Silakan coba lagi.');
@@ -91,7 +92,7 @@ class AuthProvider extends ChangeNotifier {
       }
       return false;
     } on AuthException catch (e) {
-      _setError(e.message);
+      _setError(friendlyAuthErrorMessage(e.message));
       return false;
     } catch (e) {
       _setError('Terjadi kesalahan. Silakan coba lagi.');
@@ -112,7 +113,7 @@ class AuthProvider extends ChangeNotifier {
       _profile = null;
       notifyListeners();
     } catch (e) {
-      _setError(e.toString());
+      _setError(friendlyErrorMessage(e));
     } finally {
       _setLoading(false);
     }
@@ -129,7 +130,7 @@ class AuthProvider extends ChangeNotifier {
       _profile = ProfileModel.fromJson(data);
       notifyListeners();
     } catch (e) {
-      _setError(e.toString());
+      _setError(friendlyErrorMessage(e));
     }
   }
 
@@ -149,7 +150,7 @@ class AuthProvider extends ChangeNotifier {
       await loadProfile();
       return true;
     } catch (e) {
-      _setError(e.toString());
+      _setError(friendlyErrorMessage(e));
       return false;
     } finally {
       _setLoading(false);
@@ -169,7 +170,7 @@ class AuthProvider extends ChangeNotifier {
       }
       return true;
     } catch (e) {
-      _setError(e.toString());
+      _setError(friendlyErrorMessage(e));
       return false;
     }
   }
@@ -187,7 +188,7 @@ class AuthProvider extends ChangeNotifier {
       }
       return true;
     } catch (e) {
-      _setError(e.toString());
+      _setError(friendlyErrorMessage(e));
       return false;
     }
   }
@@ -202,7 +203,7 @@ class AuthProvider extends ChangeNotifier {
       );
       return true;
     } on AuthException catch (e) {
-      _setError(e.message);
+      _setError(friendlyAuthErrorMessage(e.message));
       return false;
     } catch (e) {
       _setError('Terjadi kesalahan. Silakan coba lagi.');
@@ -228,7 +229,7 @@ class AuthProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } on AuthException catch (e) {
-      _setError(e.message);
+      _setError(friendlyAuthErrorMessage(e.message));
       return false;
     } catch (e) {
       _setError('Terjadi kesalahan. Silakan coba lagi.');
@@ -258,7 +259,7 @@ class AuthProvider extends ChangeNotifier {
       await _supabase.auth.updateUser(UserAttributes(password: newPassword));
       return true;
     } on AuthException catch (e) {
-      _setError(e.message);
+      _setError(friendlyAuthErrorMessage(e.message));
       return false;
     } catch (e) {
       _setError('Terjadi kesalahan. Silakan coba lagi.');
