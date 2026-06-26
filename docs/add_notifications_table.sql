@@ -23,6 +23,7 @@ alter table notifications enable row level security;
 drop policy if exists "notifications: user can read own" on notifications;
 drop policy if exists "notifications: user can update own" on notifications;
 drop policy if exists "notifications: admin can read all" on notifications;
+drop policy if exists "notifications: user can delete own" on notifications;
 
 create policy "notifications: user can read own"
   on notifications for select using (user_id = auth.uid());
@@ -35,6 +36,9 @@ create policy "notifications: user can update own"
 
 create policy "notifications: admin can read all"
   on notifications for select using (get_my_role() = 'admin');
+
+create policy "notifications: user can delete own"
+  on notifications for delete using (user_id = auth.uid());
 
 -- Insert hanya lewat service role key (edge function send-notification),
 -- jadi tidak perlu insert policy untuk role authenticated.

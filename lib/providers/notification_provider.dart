@@ -69,6 +69,20 @@ class NotificationProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> deleteNotification(String notificationId) async {
+    final index = _notifications.indexWhere((n) => n.id == notificationId);
+    if (index == -1) return;
+    final removed = _notifications.removeAt(index);
+    notifyListeners();
+    try {
+      await _supabase.from('notifications').delete().eq('id', notificationId);
+    } catch (e) {
+      // Gagal hapus di server, balikin lagi ke posisi semula.
+      _notifications.insert(index, removed);
+      _setError(e.toString());
+    }
+  }
+
   void subscribeToRealtime(String userId) {
     if (_subscribedUserId == userId) return;
     _channel?.unsubscribe();
