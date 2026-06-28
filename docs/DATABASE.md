@@ -6,6 +6,229 @@ Database menggunakan Supabase PostgreSQL. Struktur ini dibuat untuk MVP aplikasi
 
 ---
 
+## Diagram Tabel Saat Ini
+
+Bagian ini merangkum semua tabel utama yang digunakan aplikasi dalam bentuk ERD Mermaid. `auth_users` mewakili tabel bawaan Supabase Auth, sedangkan tabel lain berada di schema aplikasi.
+
+```mermaid
+erDiagram
+  AUTH_USERS {
+    uuid id PK
+    text email
+  }
+
+  PROFILES {
+    uuid id PK
+    uuid user_id FK
+    text name
+    text phone
+    text role
+    boolean is_available
+    timestamptz created_at
+    timestamptz updated_at
+  }
+
+  ADDRESSES {
+    uuid id PK
+    uuid user_id FK
+    text label
+    text address_text
+    double latitude
+    double longitude
+    text notes
+    boolean is_default
+    timestamptz deleted_at
+    timestamptz created_at
+    timestamptz updated_at
+  }
+
+  LAUNDRY_SERVICES {
+    uuid id PK
+    text name
+    text service_type
+    numeric price
+    text unit
+    boolean is_active
+    timestamptz created_at
+    timestamptz updated_at
+  }
+
+  ORDERS {
+    uuid id PK
+    text order_code
+    uuid customer_id FK
+    uuid address_id FK
+    text order_type
+    text status
+    text payment_status
+    numeric subtotal
+    numeric delivery_fee
+    numeric discount_amount
+    numeric total_amount
+    numeric estimated_distance_km
+    text notes
+    timestamptz created_at
+    timestamptz updated_at
+  }
+
+  ORDER_ITEMS {
+    uuid id PK
+    uuid order_id FK
+    uuid service_id FK
+    text service_name
+    text service_type
+    numeric quantity
+    numeric weight_kg
+    numeric price
+    numeric subtotal
+    text notes
+    timestamptz created_at
+  }
+
+  PAYMENTS {
+    uuid id PK
+    uuid order_id FK
+    uuid customer_id FK
+    text method
+    text provider
+    numeric amount
+    text status
+    text payment_proof_url
+    text provider_reference
+    text payment_url
+    timestamptz paid_at
+    timestamptz created_at
+    timestamptz updated_at
+  }
+
+  COURIER_TASKS {
+    uuid id PK
+    uuid order_id FK
+    uuid courier_id FK
+    text task_type
+    text status
+    timestamptz assigned_at
+    timestamptz completed_at
+    text notes
+    timestamptz created_at
+    timestamptz updated_at
+  }
+
+  ORDER_STATUS_HISTORIES {
+    uuid id PK
+    uuid order_id FK
+    uuid changed_by FK
+    text status
+    text note
+    timestamptz created_at
+  }
+
+  LAUNDRY_PHOTOS {
+    uuid id PK
+    uuid order_id FK
+    uuid uploaded_by FK
+    text photo_type
+    text file_url
+    text description
+    timestamptz created_at
+  }
+
+  USER_DEVICES {
+    uuid id PK
+    uuid user_id FK
+    text fcm_token
+    text platform
+    boolean is_active
+    timestamptz created_at
+    timestamptz updated_at
+  }
+
+  VOUCHERS {
+    uuid id PK
+    uuid user_id FK
+    text code
+    text type
+    numeric discount_percent
+    numeric max_discount
+    text status
+    timestamptz expired_at
+    uuid used_order_id FK
+    timestamptz created_at
+    timestamptz used_at
+  }
+
+  LOYALTY_POINTS {
+    uuid id PK
+    uuid user_id FK
+    int total_completed_orders
+    int current_cycle_count
+    int total_vouchers_earned
+    timestamptz created_at
+    timestamptz updated_at
+  }
+
+  DELIVERY_FEES {
+    uuid id PK
+    text name
+    numeric min_distance_km
+    numeric max_distance_km
+    numeric fee
+    boolean is_active
+    timestamptz created_at
+    timestamptz updated_at
+  }
+
+  SETTINGS {
+    uuid id PK
+    text key
+    text value
+    timestamptz created_at
+    timestamptz updated_at
+  }
+
+  NOTIFICATIONS {
+    uuid id PK
+    uuid user_id FK
+    text title
+    text body
+    text type
+    jsonb data
+    boolean is_read
+    timestamptz created_at
+  }
+
+  AUTH_USERS ||--|| PROFILES : "memiliki profile"
+  AUTH_USERS ||--o{ ADDRESSES : "memiliki alamat"
+  AUTH_USERS ||--o{ ORDERS : "membuat order"
+  ADDRESSES ||--o{ ORDERS : "dipakai order"
+  ORDERS ||--o{ ORDER_ITEMS : "memiliki item"
+  LAUNDRY_SERVICES ||--o{ ORDER_ITEMS : "dipilih sebagai item"
+  ORDERS ||--o{ PAYMENTS : "memiliki pembayaran"
+  AUTH_USERS ||--o{ PAYMENTS : "melakukan pembayaran"
+  ORDERS ||--o{ COURIER_TASKS : "memiliki tugas kurir"
+  AUTH_USERS ||--o{ COURIER_TASKS : "ditugaskan sebagai kurir"
+  ORDERS ||--o{ ORDER_STATUS_HISTORIES : "memiliki histori"
+  AUTH_USERS ||--o{ ORDER_STATUS_HISTORIES : "mengubah status"
+  ORDERS ||--o{ LAUNDRY_PHOTOS : "memiliki foto"
+  AUTH_USERS ||--o{ LAUNDRY_PHOTOS : "mengupload foto"
+  AUTH_USERS ||--o{ USER_DEVICES : "memiliki device"
+  AUTH_USERS ||--o{ VOUCHERS : "memiliki voucher"
+  ORDERS ||--o{ VOUCHERS : "dipakai oleh voucher"
+  AUTH_USERS ||--|| LOYALTY_POINTS : "memiliki loyalty"
+  AUTH_USERS ||--o{ NOTIFICATIONS : "menerima notifikasi"
+```
+
+Ringkasan relasi utama:
+
+- `auth.users` menjadi sumber user untuk customer, kurir, dan admin.
+- `profiles` menyimpan data role dari setiap user.
+- `orders` menjadi pusat transaksi laundry dan terhubung ke alamat, item, pembayaran, tugas kurir, foto, histori status, dan voucher.
+- `courier_tasks` menghubungkan order dengan user ber-role kurir.
+- `loyalty_points` dan `vouchers` menyimpan reward customer setelah order selesai.
+- `delivery_fees`, `settings`, dan `laundry_services` adalah master data/konfigurasi aplikasi.
+
+---
+
 ## 1. profiles
 
 Menyimpan data profile dan role user.
@@ -381,6 +604,35 @@ xendit_callback_token
 
 ---
 
+## 15. notifications
+
+Menyimpan riwayat notifikasi di dalam aplikasi untuk setiap user. Tabel ini melengkapi FCM, sehingga notifikasi tetap bisa dilihat di halaman notifikasi walaupun push notification tidak terbaca.
+
+```sql
+create table notifications (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  title text not null,
+  body text not null,
+  type text,
+  data jsonb,
+  is_read boolean not null default false,
+  created_at timestamptz default now()
+);
+```
+
+Contoh tipe notifikasi:
+
+```text
+order_status
+payment_status
+courier_task
+invoice
+promo
+```
+
+---
+
 ## Basic RLS Concept
 
 ### Customer
@@ -425,3 +677,5 @@ xendit-webhook
 calculate-delivery-fee
 complete-order-generate-loyalty
 ```
+
+

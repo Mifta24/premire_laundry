@@ -1,0 +1,29 @@
+<mxfile host="app.diagrams.net" modified="2026-06-28T00:00:00.000Z" agent="Codex" version="24.7.17" type="device">
+  <diagram id="sequence-pembayaran" name="Sequence Pembayaran">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="title" value="Sequence Diagram Pembayaran" style="text;html=1;strokeColor=none;fillColor=none;fontSize=20;fontStyle=1;align=center;fontColor=#000000;" vertex="1" parent="1"><mxGeometry x="330" y="20" width="500" height="40" as="geometry"/></mxCell>
+        <mxCell id="customer" value="Customer" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;fontStyle=1;fontColor=#000000;" vertex="1" parent="1"><mxGeometry x="45" y="80" width="130" height="40" as="geometry"/></mxCell>
+        <mxCell id="app" value="Aplikasi Flutter" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;fontStyle=1;fontColor=#000000;" vertex="1" parent="1"><mxGeometry x="235" y="80" width="150" height="40" as="geometry"/></mxCell>
+        <mxCell id="storage" value="Storage Bukti" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;fontStyle=1;fontColor=#000000;" vertex="1" parent="1"><mxGeometry x="455" y="80" width="140" height="40" as="geometry"/></mxCell>
+        <mxCell id="payment" value="Database Payment" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;fontStyle=1;fontColor=#000000;" vertex="1" parent="1"><mxGeometry x="660" y="80" width="160" height="40" as="geometry"/></mxCell>
+        <mxCell id="admin" value="Admin" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;fontStyle=1;fontColor=#000000;" vertex="1" parent="1"><mxGeometry x="890" y="80" width="120" height="40" as="geometry"/></mxCell>
+        <mxCell id="l1" value="" style="endArrow=none;html=1;dashed=1;strokeColor=#000000;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="110" y="120" as="sourcePoint"/><mxPoint x="110" y="610" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="l2" value="" style="endArrow=none;html=1;dashed=1;strokeColor=#000000;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="310" y="120" as="sourcePoint"/><mxPoint x="310" y="610" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="l3" value="" style="endArrow=none;html=1;dashed=1;strokeColor=#000000;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="525" y="120" as="sourcePoint"/><mxPoint x="525" y="610" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="l4" value="" style="endArrow=none;html=1;dashed=1;strokeColor=#000000;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="740" y="120" as="sourcePoint"/><mxPoint x="740" y="610" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="l5" value="" style="endArrow=none;html=1;dashed=1;strokeColor=#000000;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="950" y="120" as="sourcePoint"/><mxPoint x="950" y="610" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="m1" value="1. Membuka halaman pembayaran" style="endArrow=block;html=1;rounded=0;strokeColor=#000000;fontColor=#000000;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="110" y="155" as="sourcePoint"/><mxPoint x="310" y="155" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="m2" value="2. Memilih QRIS manual" style="endArrow=block;html=1;rounded=0;strokeColor=#000000;fontColor=#000000;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="110" y="210" as="sourcePoint"/><mxPoint x="310" y="210" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="m3" value="3. Menampilkan QRIS toko" style="endArrow=block;html=1;rounded=0;dashed=1;strokeColor=#000000;fontColor=#000000;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="310" y="265" as="sourcePoint"/><mxPoint x="110" y="265" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="m4" value="4. Upload bukti pembayaran" style="endArrow=block;html=1;rounded=0;strokeColor=#000000;fontColor=#000000;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="110" y="320" as="sourcePoint"/><mxPoint x="525" y="320" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="m5" value="5. Simpan URL bukti dan status menunggu verifikasi" style="endArrow=block;html=1;rounded=0;strokeColor=#000000;fontColor=#000000;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="310" y="380" as="sourcePoint"/><mxPoint x="740" y="380" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="m6" value="6. Melihat data pembayaran" style="endArrow=block;html=1;rounded=0;strokeColor=#000000;fontColor=#000000;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="950" y="440" as="sourcePoint"/><mxPoint x="740" y="440" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="m7" value="7. Validasi atau tolak pembayaran" style="endArrow=block;html=1;rounded=0;strokeColor=#000000;fontColor=#000000;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="950" y="500" as="sourcePoint"/><mxPoint x="740" y="500" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="m8" value="8. Status pembayaran diperbarui" style="endArrow=block;html=1;rounded=0;dashed=1;strokeColor=#000000;fontColor=#000000;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="740" y="560" as="sourcePoint"/><mxPoint x="110" y="560" as="targetPoint"/></mxGeometry></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -1,0 +1,73 @@
+<mxfile host="app.diagrams.net" modified="2026-06-28T00:00:00.000Z" agent="Codex" version="24.7.17" type="device">
+  <diagram id="erd-premier-laundry" name="ERD">
+    <mxGraphModel dx="1500" dy="1100" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1500" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="title" value="ERD Database Premier Laundry" style="text;html=1;strokeColor=none;fillColor=none;fontSize=22;fontStyle=1;align=center;fontColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="510" y="20" width="480" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="auth" value="&lt;b&gt;auth.users&lt;/b&gt;&lt;br&gt;&lt;hr&gt;PK id uuid&lt;br&gt;email text" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;align=left;spacing=8;fontColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="40" y="90" width="190" height="90" as="geometry"/>
+        </mxCell>
+        <mxCell id="profiles" value="&lt;b&gt;profiles&lt;/b&gt;&lt;br&gt;&lt;hr&gt;PK id uuid&lt;br&gt;FK user_id uuid&lt;br&gt;name text&lt;br&gt;phone text&lt;br&gt;role text&lt;br&gt;is_available boolean&lt;br&gt;created_at timestamptz&lt;br&gt;updated_at timestamptz" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;align=left;spacing=8;fontColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="300" y="80" width="220" height="190" as="geometry"/>
+        </mxCell>
+        <mxCell id="addresses" value="&lt;b&gt;addresses&lt;/b&gt;&lt;br&gt;&lt;hr&gt;PK id uuid&lt;br&gt;FK user_id uuid&lt;br&gt;label text&lt;br&gt;address_text text&lt;br&gt;latitude double&lt;br&gt;longitude double&lt;br&gt;notes text&lt;br&gt;is_default boolean&lt;br&gt;deleted_at timestamptz" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;align=left;spacing=8;fontColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="590" y="80" width="230" height="220" as="geometry"/>
+        </mxCell>
+        <mxCell id="services" value="&lt;b&gt;laundry_services&lt;/b&gt;&lt;br&gt;&lt;hr&gt;PK id uuid&lt;br&gt;name text&lt;br&gt;service_type text&lt;br&gt;price numeric&lt;br&gt;unit text&lt;br&gt;is_active boolean" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;align=left;spacing=8;fontColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="910" y="80" width="230" height="160" as="geometry"/>
+        </mxCell>
+        <mxCell id="orders" value="&lt;b&gt;orders&lt;/b&gt;&lt;br&gt;&lt;hr&gt;PK id uuid&lt;br&gt;order_code text&lt;br&gt;FK customer_id uuid&lt;br&gt;FK address_id uuid&lt;br&gt;order_type text&lt;br&gt;status text&lt;br&gt;payment_status text&lt;br&gt;subtotal numeric&lt;br&gt;delivery_fee numeric&lt;br&gt;discount_amount numeric&lt;br&gt;total_amount numeric&lt;br&gt;estimated_distance_km numeric&lt;br&gt;notes text" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;align=left;spacing=8;fontColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="300" y="360" width="250" height="290" as="geometry"/>
+        </mxCell>
+        <mxCell id="items" value="&lt;b&gt;order_items&lt;/b&gt;&lt;br&gt;&lt;hr&gt;PK id uuid&lt;br&gt;FK order_id uuid&lt;br&gt;FK service_id uuid&lt;br&gt;service_name text&lt;br&gt;service_type text&lt;br&gt;quantity numeric&lt;br&gt;weight_kg numeric&lt;br&gt;price numeric&lt;br&gt;subtotal numeric&lt;br&gt;notes text" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;align=left;spacing=8;fontColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="640" y="380" width="230" height="240" as="geometry"/>
+        </mxCell>
+        <mxCell id="payments" value="&lt;b&gt;payments&lt;/b&gt;&lt;br&gt;&lt;hr&gt;PK id uuid&lt;br&gt;FK order_id uuid&lt;br&gt;FK customer_id uuid&lt;br&gt;method text&lt;br&gt;provider text&lt;br&gt;amount numeric&lt;br&gt;status text&lt;br&gt;payment_proof_url text&lt;br&gt;provider_reference text&lt;br&gt;payment_url text&lt;br&gt;paid_at timestamptz" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;align=left;spacing=8;fontColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="960" y="340" width="250" height="260" as="geometry"/>
+        </mxCell>
+        <mxCell id="tasks" value="&lt;b&gt;courier_tasks&lt;/b&gt;&lt;br&gt;&lt;hr&gt;PK id uuid&lt;br&gt;FK order_id uuid&lt;br&gt;FK courier_id uuid&lt;br&gt;task_type text&lt;br&gt;status text&lt;br&gt;assigned_at timestamptz&lt;br&gt;completed_at timestamptz&lt;br&gt;notes text" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;align=left;spacing=8;fontColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="40" y="380" width="220" height="205" as="geometry"/>
+        </mxCell>
+        <mxCell id="histories" value="&lt;b&gt;order_status_histories&lt;/b&gt;&lt;br&gt;&lt;hr&gt;PK id uuid&lt;br&gt;FK order_id uuid&lt;br&gt;FK changed_by uuid&lt;br&gt;status text&lt;br&gt;note text&lt;br&gt;created_at timestamptz" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;align=left;spacing=8;fontColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="40" y="700" width="240" height="155" as="geometry"/>
+        </mxCell>
+        <mxCell id="photos" value="&lt;b&gt;laundry_photos&lt;/b&gt;&lt;br&gt;&lt;hr&gt;PK id uuid&lt;br&gt;FK order_id uuid&lt;br&gt;FK uploaded_by uuid&lt;br&gt;photo_type text&lt;br&gt;file_url text&lt;br&gt;description text&lt;br&gt;created_at timestamptz" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;align=left;spacing=8;fontColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="330" y="730" width="230" height="175" as="geometry"/>
+        </mxCell>
+        <mxCell id="devices" value="&lt;b&gt;user_devices&lt;/b&gt;&lt;br&gt;&lt;hr&gt;PK id uuid&lt;br&gt;FK user_id uuid&lt;br&gt;fcm_token text&lt;br&gt;platform text&lt;br&gt;is_active boolean&lt;br&gt;created_at timestamptz&lt;br&gt;updated_at timestamptz" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;align=left;spacing=8;fontColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="620" y="730" width="230" height="175" as="geometry"/>
+        </mxCell>
+        <mxCell id="vouchers" value="&lt;b&gt;vouchers&lt;/b&gt;&lt;br&gt;&lt;hr&gt;PK id uuid&lt;br&gt;FK user_id uuid&lt;br&gt;code text&lt;br&gt;type text&lt;br&gt;discount_percent numeric&lt;br&gt;max_discount numeric&lt;br&gt;status text&lt;br&gt;expired_at timestamptz&lt;br&gt;FK used_order_id uuid&lt;br&gt;used_at timestamptz" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;align=left;spacing=8;fontColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="910" y="700" width="250" height="230" as="geometry"/>
+        </mxCell>
+        <mxCell id="loyalty" value="&lt;b&gt;loyalty_points&lt;/b&gt;&lt;br&gt;&lt;hr&gt;PK id uuid&lt;br&gt;FK user_id uuid&lt;br&gt;total_completed_orders int&lt;br&gt;current_cycle_count int&lt;br&gt;total_vouchers_earned int&lt;br&gt;created_at timestamptz&lt;br&gt;updated_at timestamptz" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;align=left;spacing=8;fontColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="1210" y="690" width="240" height="175" as="geometry"/>
+        </mxCell>
+        <mxCell id="delivery" value="&lt;b&gt;delivery_fees&lt;/b&gt;&lt;br&gt;&lt;hr&gt;PK id uuid&lt;br&gt;name text&lt;br&gt;min_distance_km numeric&lt;br&gt;max_distance_km numeric&lt;br&gt;fee numeric&lt;br&gt;is_active boolean" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;align=left;spacing=8;fontColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="1210" y="90" width="230" height="155" as="geometry"/>
+        </mxCell>
+        <mxCell id="settings" value="&lt;b&gt;settings&lt;/b&gt;&lt;br&gt;&lt;hr&gt;PK id uuid&lt;br&gt;key text&lt;br&gt;value text&lt;br&gt;created_at timestamptz&lt;br&gt;updated_at timestamptz" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;align=left;spacing=8;fontColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="1210" y="320" width="220" height="130" as="geometry"/>
+        </mxCell>
+        <mxCell id="e1" value="1 : 1" style="endArrow=block;html=1;rounded=0;strokeColor=#000000;fontColor=#000000;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="230" y="135" as="sourcePoint"/><mxPoint x="300" y="135" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="e2" value="1 : N" style="endArrow=block;html=1;rounded=0;strokeColor=#000000;fontColor=#000000;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="230" y="165" as="sourcePoint"/><mxPoint x="590" y="165" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="e3" value="customer 1 : N order" style="endArrow=block;html=1;rounded=0;strokeColor=#000000;fontColor=#000000;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="410" y="270" as="sourcePoint"/><mxPoint x="410" y="360" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="e4" value="alamat 1 : N order" style="endArrow=block;html=1;rounded=0;strokeColor=#000000;fontColor=#000000;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="650" y="300" as="sourcePoint"/><mxPoint x="550" y="430" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="e5" value="1 : N" style="endArrow=block;html=1;rounded=0;strokeColor=#000000;fontColor=#000000;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="550" y="490" as="sourcePoint"/><mxPoint x="640" y="490" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="e6" value="layanan 1 : N item" style="endArrow=block;html=1;rounded=0;strokeColor=#000000;fontColor=#000000;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="1020" y="240" as="sourcePoint"/><mxPoint x="870" y="430" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="e7" value="1 : N pembayaran" style="endArrow=block;html=1;rounded=0;strokeColor=#000000;fontColor=#000000;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="550" y="545" as="sourcePoint"/><mxPoint x="960" y="470" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="e8" value="1 : N tugas" style="endArrow=block;html=1;rounded=0;strokeColor=#000000;fontColor=#000000;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="300" y="500" as="sourcePoint"/><mxPoint x="260" y="500" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="e9" value="kurir 1 : N tugas" style="endArrow=block;html=1;rounded=0;strokeColor=#000000;fontColor=#000000;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="300" y="230" as="sourcePoint"/><mxPoint x="160" y="380" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="e10" value="1 : N histori" style="endArrow=block;html=1;rounded=0;strokeColor=#000000;fontColor=#000000;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="360" y="650" as="sourcePoint"/><mxPoint x="260" y="735" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="e11" value="1 : N foto" style="endArrow=block;html=1;rounded=0;strokeColor=#000000;fontColor=#000000;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="450" y="650" as="sourcePoint"/><mxPoint x="450" y="730" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="e12" value="user 1 : N device" style="endArrow=block;html=1;rounded=0;strokeColor=#000000;fontColor=#000000;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="230" y="120" as="sourcePoint"/><mxPoint x="620" y="780" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="e13" value="user 1 : N voucher" style="endArrow=block;html=1;rounded=0;strokeColor=#000000;fontColor=#000000;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="230" y="150" as="sourcePoint"/><mxPoint x="910" y="760" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="e14" value="order 0..1 : N voucher terpakai" style="endArrow=block;html=1;rounded=0;strokeColor=#000000;fontColor=#000000;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="550" y="620" as="sourcePoint"/><mxPoint x="910" y="860" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="e15" value="user 1 : 1 loyalty" style="endArrow=block;html=1;rounded=0;strokeColor=#000000;fontColor=#000000;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="230" y="180" as="sourcePoint"/><mxPoint x="1210" y="760" as="targetPoint"/></mxGeometry></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

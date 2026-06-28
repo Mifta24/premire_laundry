@@ -1,0 +1,188 @@
+<mxfile host="app.diagrams.net" modified="2026-06-27T00:00:00.000Z" agent="Codex" version="24.7.17" type="device">
+  <diagram id="seq-login" name="Sequence Login">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="t1" value="Sequence Diagram Login User" style="text;html=1;strokeColor=none;fillColor=none;fontSize=20;fontStyle=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="340" y="20" width="480" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="p1" value="User" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1f5fe;strokeColor=#0288d1;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="60" y="80" width="140" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="p2" value="Aplikasi Flutter" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#388e3c;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="280" y="80" width="160" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="p3" value="Supabase Auth" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#f57c00;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="530" y="80" width="160" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="p4" value="Database Profiles" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f3e5f5;strokeColor=#7b1fa2;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="780" y="80" width="170" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="l1" value="" style="endArrow=none;html=1;dashed=1;strokeColor=#666666;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="130" y="120" as="sourcePoint"/><mxPoint x="130" y="560" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="l2" value="" style="endArrow=none;html=1;dashed=1;strokeColor=#666666;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="360" y="120" as="sourcePoint"/><mxPoint x="360" y="560" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="l3" value="" style="endArrow=none;html=1;dashed=1;strokeColor=#666666;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="610" y="120" as="sourcePoint"/><mxPoint x="610" y="560" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="l4" value="" style="endArrow=none;html=1;dashed=1;strokeColor=#666666;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="865" y="120" as="sourcePoint"/><mxPoint x="865" y="560" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="a1" value="1. Memasukkan email dan password" style="endArrow=block;html=1;rounded=0;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="130" y="160" as="sourcePoint"/><mxPoint x="360" y="160" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="a2" value="2. Kirim data login" style="endArrow=block;html=1;rounded=0;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="360" y="210" as="sourcePoint"/><mxPoint x="610" y="210" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="a3" value="3. Validasi akun" style="endArrow=block;html=1;rounded=0;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="610" y="260" as="sourcePoint"/><mxPoint x="610" y="260" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="a4" value="4. Session login berhasil" style="endArrow=block;html=1;rounded=0;dashed=1;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="610" y="310" as="sourcePoint"/><mxPoint x="360" y="310" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="a5" value="5. Ambil profil dan role user" style="endArrow=block;html=1;rounded=0;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="360" y="360" as="sourcePoint"/><mxPoint x="865" y="360" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="a6" value="6. Data role: customer/kurir/admin" style="endArrow=block;html=1;rounded=0;dashed=1;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="865" y="410" as="sourcePoint"/><mxPoint x="360" y="410" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="a7" value="7. Tampilkan dashboard sesuai role" style="endArrow=block;html=1;rounded=0;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="360" y="470" as="sourcePoint"/><mxPoint x="130" y="470" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="n1" value="Jika login gagal, sistem menampilkan pesan error dan user tetap berada di halaman login." style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;fillColor=#fffde7;strokeColor=#fbc02d;" vertex="1" parent="1">
+          <mxGeometry x="735" y="480" width="300" height="70" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="seq-order" name="Sequence Buat Pesanan">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="t2" value="Sequence Diagram Buat Pesanan Laundry" style="text;html=1;strokeColor=none;fillColor=none;fontSize=20;fontStyle=1;align=center;" vertex="1" parent="1"><mxGeometry x="300" y="20" width="560" height="40" as="geometry"/></mxCell>
+        <mxCell id="o1" value="Customer" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1f5fe;strokeColor=#0288d1;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="40" y="80" width="140" height="40" as="geometry"/></mxCell>
+        <mxCell id="o2" value="Aplikasi Flutter" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#388e3c;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="230" y="80" width="160" height="40" as="geometry"/></mxCell>
+        <mxCell id="o3" value="Database Layanan" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#f57c00;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="460" y="80" width="160" height="40" as="geometry"/></mxCell>
+        <mxCell id="o4" value="Database Alamat" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f3e5f5;strokeColor=#7b1fa2;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="680" y="80" width="160" height="40" as="geometry"/></mxCell>
+        <mxCell id="o5" value="Database Orders" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fce4ec;strokeColor=#c2185b;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="900" y="80" width="160" height="40" as="geometry"/></mxCell>
+        <mxCell id="ol1" value="" style="endArrow=none;html=1;dashed=1;strokeColor=#666666;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="110" y="120" as="sourcePoint"/><mxPoint x="110" y="610" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="ol2" value="" style="endArrow=none;html=1;dashed=1;strokeColor=#666666;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="310" y="120" as="sourcePoint"/><mxPoint x="310" y="610" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="ol3" value="" style="endArrow=none;html=1;dashed=1;strokeColor=#666666;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="540" y="120" as="sourcePoint"/><mxPoint x="540" y="610" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="ol4" value="" style="endArrow=none;html=1;dashed=1;strokeColor=#666666;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="760" y="120" as="sourcePoint"/><mxPoint x="760" y="610" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="ol5" value="" style="endArrow=none;html=1;dashed=1;strokeColor=#666666;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="980" y="120" as="sourcePoint"/><mxPoint x="980" y="610" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="oa1" value="1. Membuka menu buat pesanan" style="endArrow=block;html=1;rounded=0;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="110" y="155" as="sourcePoint"/><mxPoint x="310" y="155" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="oa2" value="2. Ambil daftar layanan" style="endArrow=block;html=1;rounded=0;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="310" y="205" as="sourcePoint"/><mxPoint x="540" y="205" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="oa3" value="3. Data layanan kiloan/satuan" style="endArrow=block;html=1;rounded=0;dashed=1;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="540" y="255" as="sourcePoint"/><mxPoint x="310" y="255" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="oa4" value="4. Ambil alamat customer" style="endArrow=block;html=1;rounded=0;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="310" y="305" as="sourcePoint"/><mxPoint x="760" y="305" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="oa5" value="5. Data alamat dan koordinat" style="endArrow=block;html=1;rounded=0;dashed=1;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="760" y="355" as="sourcePoint"/><mxPoint x="310" y="355" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="oa6" value="6. Pilih layanan, alamat, catatan, voucher" style="endArrow=block;html=1;rounded=0;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="110" y="405" as="sourcePoint"/><mxPoint x="310" y="405" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="oa7" value="7. Hitung total dan ongkir" style="endArrow=block;html=1;rounded=0;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="310" y="455" as="sourcePoint"/><mxPoint x="310" y="455" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="oa8" value="8. Simpan order dan item pesanan" style="endArrow=block;html=1;rounded=0;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="310" y="505" as="sourcePoint"/><mxPoint x="980" y="505" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="oa9" value="9. Order berhasil dibuat" style="endArrow=block;html=1;rounded=0;dashed=1;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="980" y="555" as="sourcePoint"/><mxPoint x="110" y="555" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="on1" value="Untuk laundry kiloan, tagihan akhir dibuat setelah admin input berat aktual." style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;fillColor=#fffde7;strokeColor=#fbc02d;" vertex="1" parent="1"><mxGeometry x="735" y="625" width="330" height="60" as="geometry"/></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="seq-payment" name="Sequence Pembayaran">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="t3" value="Sequence Diagram Pembayaran" style="text;html=1;strokeColor=none;fillColor=none;fontSize=20;fontStyle=1;align=center;" vertex="1" parent="1"><mxGeometry x="330" y="20" width="500" height="40" as="geometry"/></mxCell>
+        <mxCell id="py1" value="Customer" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1f5fe;strokeColor=#0288d1;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="35" y="80" width="130" height="40" as="geometry"/></mxCell>
+        <mxCell id="py2" value="Aplikasi Flutter" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#388e3c;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="210" y="80" width="150" height="40" as="geometry"/></mxCell>
+        <mxCell id="py3" value="Storage Bukti" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#f57c00;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="405" y="80" width="140" height="40" as="geometry"/></mxCell>
+        <mxCell id="py4" value="Database Payment" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f3e5f5;strokeColor=#7b1fa2;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="590" y="80" width="160" height="40" as="geometry"/></mxCell>
+        <mxCell id="py5" value="Admin" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fce4ec;strokeColor=#c2185b;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="800" y="80" width="120" height="40" as="geometry"/></mxCell>
+        <mxCell id="py6" value="Xendit" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e0f2f1;strokeColor=#00796b;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="975" y="80" width="120" height="40" as="geometry"/></mxCell>
+        <mxCell id="pyl1" value="" style="endArrow=none;html=1;dashed=1;strokeColor=#666666;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="100" y="120" as="sourcePoint"/><mxPoint x="100" y="650" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="pyl2" value="" style="endArrow=none;html=1;dashed=1;strokeColor=#666666;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="285" y="120" as="sourcePoint"/><mxPoint x="285" y="650" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="pyl3" value="" style="endArrow=none;html=1;dashed=1;strokeColor=#666666;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="475" y="120" as="sourcePoint"/><mxPoint x="475" y="650" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="pyl4" value="" style="endArrow=none;html=1;dashed=1;strokeColor=#666666;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="670" y="120" as="sourcePoint"/><mxPoint x="670" y="650" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="pyl5" value="" style="endArrow=none;html=1;dashed=1;strokeColor=#666666;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="860" y="120" as="sourcePoint"/><mxPoint x="860" y="650" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="pyl6" value="" style="endArrow=none;html=1;dashed=1;strokeColor=#666666;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="1035" y="120" as="sourcePoint"/><mxPoint x="1035" y="650" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="pya1" value="1. Membuka halaman pembayaran" style="endArrow=block;html=1;rounded=0;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="100" y="155" as="sourcePoint"/><mxPoint x="285" y="155" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="pya2" value="2. Pilih metode QRIS manual" style="endArrow=block;html=1;rounded=0;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="100" y="205" as="sourcePoint"/><mxPoint x="285" y="205" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="pya3" value="3. Tampilkan QRIS toko" style="endArrow=block;html=1;rounded=0;dashed=1;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="285" y="255" as="sourcePoint"/><mxPoint x="100" y="255" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="pya4" value="4. Upload bukti pembayaran" style="endArrow=block;html=1;rounded=0;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="100" y="305" as="sourcePoint"/><mxPoint x="475" y="305" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="pya5" value="5. Simpan URL bukti dan status menunggu verifikasi" style="endArrow=block;html=1;rounded=0;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="285" y="355" as="sourcePoint"/><mxPoint x="670" y="355" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="pya6" value="6. Melihat data pembayaran" style="endArrow=block;html=1;rounded=0;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="860" y="405" as="sourcePoint"/><mxPoint x="670" y="405" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="pya7" value="7. Validasi / tolak pembayaran" style="endArrow=block;html=1;rounded=0;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="860" y="455" as="sourcePoint"/><mxPoint x="670" y="455" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="pya8" value="8. Status pembayaran diperbarui" style="endArrow=block;html=1;rounded=0;dashed=1;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="670" y="505" as="sourcePoint"/><mxPoint x="100" y="505" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="pya9" value="Alternatif Xendit: buat invoice, customer bayar, webhook mengubah status menjadi lunas" style="endArrow=block;html=1;rounded=0;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="285" y="580" as="sourcePoint"/><mxPoint x="1035" y="580" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="pyn1" value="Bagian utama laporan bisa memakai QRIS manual. Xendit cukup disebut sebagai metode alternatif." style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;fillColor=#fffde7;strokeColor=#fbc02d;" vertex="1" parent="1"><mxGeometry x="725" y="665" width="350" height="55" as="geometry"/></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="seq-process" name="Sequence Proses Pesanan">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="t4" value="Sequence Diagram Proses Pesanan Laundry" style="text;html=1;strokeColor=none;fillColor=none;fontSize=20;fontStyle=1;align=center;" vertex="1" parent="1"><mxGeometry x="300" y="20" width="560" height="40" as="geometry"/></mxCell>
+        <mxCell id="pr1" value="Customer" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1f5fe;strokeColor=#0288d1;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="40" y="80" width="130" height="40" as="geometry"/></mxCell>
+        <mxCell id="pr2" value="Admin" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#388e3c;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="225" y="80" width="120" height="40" as="geometry"/></mxCell>
+        <mxCell id="pr3" value="Aplikasi" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#f57c00;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="405" y="80" width="120" height="40" as="geometry"/></mxCell>
+        <mxCell id="pr4" value="Database Order" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f3e5f5;strokeColor=#7b1fa2;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="585" y="80" width="150" height="40" as="geometry"/></mxCell>
+        <mxCell id="pr5" value="Kurir" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fce4ec;strokeColor=#c2185b;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="800" y="80" width="120" height="40" as="geometry"/></mxCell>
+        <mxCell id="pr6" value="Loyalty" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e0f2f1;strokeColor=#00796b;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="975" y="80" width="120" height="40" as="geometry"/></mxCell>
+        <mxCell id="prl1" value="" style="endArrow=none;html=1;dashed=1;strokeColor=#666666;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="105" y="120" as="sourcePoint"/><mxPoint x="105" y="680" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="prl2" value="" style="endArrow=none;html=1;dashed=1;strokeColor=#666666;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="285" y="120" as="sourcePoint"/><mxPoint x="285" y="680" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="prl3" value="" style="endArrow=none;html=1;dashed=1;strokeColor=#666666;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="465" y="120" as="sourcePoint"/><mxPoint x="465" y="680" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="prl4" value="" style="endArrow=none;html=1;dashed=1;strokeColor=#666666;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="660" y="120" as="sourcePoint"/><mxPoint x="660" y="680" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="prl5" value="" style="endArrow=none;html=1;dashed=1;strokeColor=#666666;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="860" y="120" as="sourcePoint"/><mxPoint x="860" y="680" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="prl6" value="" style="endArrow=none;html=1;dashed=1;strokeColor=#666666;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="1035" y="120" as="sourcePoint"/><mxPoint x="1035" y="680" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="pra1" value="1. Pesanan dibuat" style="endArrow=block;html=1;rounded=0;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="105" y="150" as="sourcePoint"/><mxPoint x="660" y="150" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="pra2" value="2. Admin melihat pesanan masuk" style="endArrow=block;html=1;rounded=0;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="285" y="200" as="sourcePoint"/><mxPoint x="465" y="200" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="pra3" value="3. Assign kurir jemput" style="endArrow=block;html=1;rounded=0;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="285" y="250" as="sourcePoint"/><mxPoint x="660" y="250" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="pra4" value="4. Tugas jemput muncul" style="endArrow=block;html=1;rounded=0;dashed=1;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="660" y="300" as="sourcePoint"/><mxPoint x="860" y="300" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="pra5" value="5. Kurir mengambil pakaian" style="endArrow=block;html=1;rounded=0;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="860" y="350" as="sourcePoint"/><mxPoint x="660" y="350" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="pra6" value="6. Admin input berat / proses laundry" style="endArrow=block;html=1;rounded=0;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="285" y="405" as="sourcePoint"/><mxPoint x="660" y="405" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="pra7" value="7. Update status siap diantar" style="endArrow=block;html=1;rounded=0;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="285" y="460" as="sourcePoint"/><mxPoint x="660" y="460" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="pra8" value="8. Assign kurir antar" style="endArrow=block;html=1;rounded=0;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="285" y="510" as="sourcePoint"/><mxPoint x="860" y="510" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="pra9" value="9. Kurir menyelesaikan pengantaran" style="endArrow=block;html=1;rounded=0;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="860" y="560" as="sourcePoint"/><mxPoint x="660" y="560" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="pra10" value="10. Order selesai, tambah poin loyalty" style="endArrow=block;html=1;rounded=0;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="660" y="615" as="sourcePoint"/><mxPoint x="1035" y="615" as="targetPoint"/></mxGeometry></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="seq-courier-task" name="Sequence Kurir Menjalankan Tugas">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="t5" value="Sequence Diagram Kurir Menjalankan Tugas" style="text;html=1;strokeColor=none;fillColor=none;fontSize=20;fontStyle=1;align=center;" vertex="1" parent="1"><mxGeometry x="280" y="20" width="600" height="40" as="geometry"/></mxCell>
+        <mxCell id="cu1" value="Kurir" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1f5fe;strokeColor=#0288d1;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="60" y="80" width="130" height="40" as="geometry"/></mxCell>
+        <mxCell id="cu2" value="Aplikasi Flutter" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#388e3c;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="270" y="80" width="160" height="40" as="geometry"/></mxCell>
+        <mxCell id="cu3" value="Database Task" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#f57c00;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="520" y="80" width="150" height="40" as="geometry"/></mxCell>
+        <mxCell id="cu4" value="Maps" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f3e5f5;strokeColor=#7b1fa2;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="750" y="80" width="120" height="40" as="geometry"/></mxCell>
+        <mxCell id="cu5" value="Customer" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fce4ec;strokeColor=#c2185b;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="950" y="80" width="130" height="40" as="geometry"/></mxCell>
+        <mxCell id="cul1" value="" style="endArrow=none;html=1;dashed=1;strokeColor=#666666;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="125" y="120" as="sourcePoint"/><mxPoint x="125" y="610" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="cul2" value="" style="endArrow=none;html=1;dashed=1;strokeColor=#666666;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="350" y="120" as="sourcePoint"/><mxPoint x="350" y="610" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="cul3" value="" style="endArrow=none;html=1;dashed=1;strokeColor=#666666;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="595" y="120" as="sourcePoint"/><mxPoint x="595" y="610" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="cul4" value="" style="endArrow=none;html=1;dashed=1;strokeColor=#666666;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="810" y="120" as="sourcePoint"/><mxPoint x="810" y="610" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="cul5" value="" style="endArrow=none;html=1;dashed=1;strokeColor=#666666;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="1015" y="120" as="sourcePoint"/><mxPoint x="1015" y="610" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="cua1" value="1. Membuka halaman tugas" style="endArrow=block;html=1;rounded=0;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="125" y="155" as="sourcePoint"/><mxPoint x="350" y="155" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="cua2" value="2. Ambil daftar tugas kurir" style="endArrow=block;html=1;rounded=0;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="350" y="205" as="sourcePoint"/><mxPoint x="595" y="205" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="cua3" value="3. Data tugas jemput/antar" style="endArrow=block;html=1;rounded=0;dashed=1;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="595" y="255" as="sourcePoint"/><mxPoint x="350" y="255" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="cua4" value="4. Memilih detail tugas" style="endArrow=block;html=1;rounded=0;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="125" y="305" as="sourcePoint"/><mxPoint x="350" y="305" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="cua5" value="5. Buka rute alamat customer" style="endArrow=block;html=1;rounded=0;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="350" y="355" as="sourcePoint"/><mxPoint x="810" y="355" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="cua6" value="6. Update status menuju lokasi" style="endArrow=block;html=1;rounded=0;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="125" y="405" as="sourcePoint"/><mxPoint x="595" y="405" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="cua7" value="7. Notifikasi status ke customer" style="endArrow=block;html=1;rounded=0;dashed=1;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="595" y="455" as="sourcePoint"/><mxPoint x="1015" y="455" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="cua8" value="8. Update status pakaian diambil / diterima" style="endArrow=block;html=1;rounded=0;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="125" y="505" as="sourcePoint"/><mxPoint x="595" y="505" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="cua9" value="9. Status order ikut diperbarui" style="endArrow=block;html=1;rounded=0;dashed=1;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="595" y="555" as="sourcePoint"/><mxPoint x="350" y="555" as="targetPoint"/></mxGeometry></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="seq-admin-order" name="Sequence Admin Mengelola Pesanan">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="t6" value="Sequence Diagram Admin Mengelola Pesanan" style="text;html=1;strokeColor=none;fillColor=none;fontSize=20;fontStyle=1;align=center;" vertex="1" parent="1"><mxGeometry x="290" y="20" width="580" height="40" as="geometry"/></mxCell>
+        <mxCell id="ad1" value="Admin" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1f5fe;strokeColor=#0288d1;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="45" y="80" width="120" height="40" as="geometry"/></mxCell>
+        <mxCell id="ad2" value="Aplikasi Flutter" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#388e3c;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="230" y="80" width="160" height="40" as="geometry"/></mxCell>
+        <mxCell id="ad3" value="Database Order" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#f57c00;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="460" y="80" width="150" height="40" as="geometry"/></mxCell>
+        <mxCell id="ad4" value="Database Kurir" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f3e5f5;strokeColor=#7b1fa2;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="680" y="80" width="150" height="40" as="geometry"/></mxCell>
+        <mxCell id="ad5" value="Database Payment" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fce4ec;strokeColor=#c2185b;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="900" y="80" width="160" height="40" as="geometry"/></mxCell>
+        <mxCell id="adl1" value="" style="endArrow=none;html=1;dashed=1;strokeColor=#666666;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="105" y="120" as="sourcePoint"/><mxPoint x="105" y="690" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="adl2" value="" style="endArrow=none;html=1;dashed=1;strokeColor=#666666;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="310" y="120" as="sourcePoint"/><mxPoint x="310" y="690" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="adl3" value="" style="endArrow=none;html=1;dashed=1;strokeColor=#666666;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="535" y="120" as="sourcePoint"/><mxPoint x="535" y="690" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="adl4" value="" style="endArrow=none;html=1;dashed=1;strokeColor=#666666;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="755" y="120" as="sourcePoint"/><mxPoint x="755" y="690" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="adl5" value="" style="endArrow=none;html=1;dashed=1;strokeColor=#666666;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="980" y="120" as="sourcePoint"/><mxPoint x="980" y="690" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="ada1" value="1. Membuka menu pesanan" style="endArrow=block;html=1;rounded=0;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="105" y="150" as="sourcePoint"/><mxPoint x="310" y="150" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="ada2" value="2. Ambil daftar pesanan" style="endArrow=block;html=1;rounded=0;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="310" y="200" as="sourcePoint"/><mxPoint x="535" y="200" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="ada3" value="3. Data pesanan tampil" style="endArrow=block;html=1;rounded=0;dashed=1;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="535" y="250" as="sourcePoint"/><mxPoint x="105" y="250" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="ada4" value="4. Memilih detail pesanan" style="endArrow=block;html=1;rounded=0;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="105" y="300" as="sourcePoint"/><mxPoint x="310" y="300" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="ada5" value="5. Ambil daftar kurir tersedia" style="endArrow=block;html=1;rounded=0;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="310" y="350" as="sourcePoint"/><mxPoint x="755" y="350" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="ada6" value="6. Assign kurir jemput / antar" style="endArrow=block;html=1;rounded=0;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="105" y="400" as="sourcePoint"/><mxPoint x="535" y="400" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="ada7" value="7. Input berat dan generate tagihan" style="endArrow=block;html=1;rounded=0;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="105" y="455" as="sourcePoint"/><mxPoint x="535" y="455" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="ada8" value="8. Cek pembayaran manual" style="endArrow=block;html=1;rounded=0;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="105" y="510" as="sourcePoint"/><mxPoint x="980" y="510" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="ada9" value="9. Validasi / tolak pembayaran" style="endArrow=block;html=1;rounded=0;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="105" y="565" as="sourcePoint"/><mxPoint x="980" y="565" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="ada10" value="10. Update status laundry" style="endArrow=block;html=1;rounded=0;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="105" y="620" as="sourcePoint"/><mxPoint x="535" y="620" as="targetPoint"/></mxGeometry></mxCell>
+        <mxCell id="adn1" value="Aktivitas admin mencakup pesanan baru, input berat kiloan, validasi pembayaran, update status, dan assign kurir." style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;fillColor=#fffde7;strokeColor=#fbc02d;" vertex="1" parent="1"><mxGeometry x="685" y="645" width="380" height="55" as="geometry"/></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
