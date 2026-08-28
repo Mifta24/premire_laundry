@@ -8,6 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/utils/currency_formatter.dart';
 import '../../core/utils/date_formatter.dart';
+import '../../core/utils/whatsapp_launcher.dart';
 import '../../models/courier_task_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/courier_provider.dart';
@@ -63,16 +64,6 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
     }
   }
 
-  String _normalizePhoneForWhatsApp(String phone) {
-    var digits = phone.replaceAll(RegExp(r'[^0-9]'), '');
-    if (digits.startsWith('0')) {
-      digits = '62${digits.substring(1)}';
-    } else if (!digits.startsWith('62')) {
-      digits = '62$digits';
-    }
-    return digits;
-  }
-
   Future<void> _callCustomer() async {
     final phone = _task?.customerPhone;
     if (phone == null || phone.isEmpty) {
@@ -81,18 +72,8 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
       );
       return;
     }
-    final waPhone = _normalizePhoneForWhatsApp(phone);
-    final appUri = Uri.parse('whatsapp://send?phone=$waPhone');
-    if (await canLaunchUrl(appUri)) {
-      await launchUrl(appUri);
-      return;
-    }
-
-    final webUri = Uri.parse('https://wa.me/$waPhone');
-    if (await canLaunchUrl(webUri)) {
-      await launchUrl(webUri, mode: LaunchMode.externalApplication);
-    } else {
-      if (!mounted) return;
+    final opened = await openWhatsAppChat(phone);
+    if (!opened && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('WhatsApp tidak terpasang di perangkat ini')),
       );

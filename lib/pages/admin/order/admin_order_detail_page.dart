@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/date_formatter.dart';
+import '../../../core/utils/whatsapp_launcher.dart';
 import '../../../models/courier_task_model.dart';
 import '../../../models/laundry_service_model.dart';
 import '../../../models/order_model.dart';
@@ -567,6 +568,15 @@ class _AdminOrderDetailPageState extends State<AdminOrderDetailPage> {
     }
   }
 
+  Future<void> _chatCustomer(String phone) async {
+    final opened = await openWhatsAppChat(phone);
+    if (!opened && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('WhatsApp tidak terpasang di perangkat ini')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -797,11 +807,16 @@ class _AdminOrderDetailPageState extends State<AdminOrderDetailPage> {
                     ),
                   ),
                   if (order.customerPhone != null &&
-                      order.customerPhone!.isNotEmpty)
+                      order.customerPhone!.isNotEmpty) ...[
+                    IconButton(
+                      icon: const Icon(Icons.chat, color: AppColors.success),
+                      onPressed: () => _chatCustomer(order.customerPhone!),
+                    ),
                     IconButton(
                       icon: const Icon(Icons.phone, color: AppColors.success),
                       onPressed: () => _callCustomer(order.customerPhone!),
                     ),
+                  ],
                 ],
               ),
             ]),
