@@ -206,14 +206,6 @@ class CustomerProvider extends ChangeNotifier {
     }
   }
 
-  String _generateOrderCode() {
-    final now = DateTime.now();
-    final datePart =
-        '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}';
-    final random = (1000 + (now.millisecondsSinceEpoch % 9000)).toString();
-    return 'PL-$datePart-$random';
-  }
-
   Future<String?> createOrder({
     required String customerId,
     required String orderType,
@@ -231,23 +223,26 @@ class CustomerProvider extends ChangeNotifier {
     _setError(null);
     try {
       final orderId = _uuid.v4();
-      final orderCode = _generateOrderCode();
 
-      await _supabase.from('orders').insert({
-        'id': orderId,
-        'order_code': orderCode,
-        'customer_id': customerId,
-        'address_id': addressId,
-        'order_type': orderType,
-        'status': 'created',
-        'payment_status': 'pending',
-        'subtotal': subtotal,
-        'delivery_fee': deliveryFee,
-        'discount_amount': discountAmount ?? 0.0,
-        'total_amount': total,
-        'estimated_distance_km': estimatedDistanceKm,
-        'notes': notes,
-      });
+      final inserted = await _supabase
+          .from('orders')
+          .insert({
+            'id': orderId,
+            'customer_id': customerId,
+            'address_id': addressId,
+            'order_type': orderType,
+            'status': 'created',
+            'payment_status': 'pending',
+            'subtotal': subtotal,
+            'delivery_fee': deliveryFee,
+            'discount_amount': discountAmount ?? 0.0,
+            'total_amount': total,
+            'estimated_distance_km': estimatedDistanceKm,
+            'notes': notes,
+          })
+          .select('order_code')
+          .single();
+      final orderCode = inserted['order_code'] as String;
 
       if (items.isNotEmpty) {
         final itemsToInsert = items
