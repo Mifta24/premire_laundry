@@ -15,7 +15,12 @@ import '../../../widgets/app_button.dart';
 
 class CreateOrderPage extends StatefulWidget {
   final String orderType;
-  const CreateOrderPage({super.key, required this.orderType});
+  final bool lockType;
+  const CreateOrderPage({
+    super.key,
+    required this.orderType,
+    this.lockType = false,
+  });
 
   @override
   State<CreateOrderPage> createState() => _CreateOrderPageState();
@@ -613,8 +618,10 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildTypeToggle(),
-                  const SizedBox(height: 16),
+                  if (!widget.lockType) ...[
+                    _buildTypeToggle(),
+                    const SizedBox(height: 16),
+                  ],
                   _sectionTitle('Pilih Layanan'),
                   const SizedBox(height: 8),
                   _buildServiceSection(),

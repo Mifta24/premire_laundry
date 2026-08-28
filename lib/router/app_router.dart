@@ -103,8 +103,11 @@ class AppRouter {
         GoRoute(
           path: '/customer/order/create',
           builder: (context, state) {
-            final type = state.uri.queryParameters['type'] ?? 'kiloan';
-            return CreateOrderPage(orderType: type);
+            final explicitType = state.uri.queryParameters['type'];
+            return CreateOrderPage(
+              orderType: explicitType ?? 'kiloan',
+              lockType: explicitType != null,
+            );
           },
         ),
         GoRoute(
