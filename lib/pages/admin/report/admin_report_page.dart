@@ -1,11 +1,15 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:printing/printing.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/date_formatter.dart';
+import '../../../core/utils/revenue_report_pdf.dart';
 import '../../../providers/admin_provider.dart';
+
+enum _ReportPeriod { day, week, month }
 
 class AdminReportPage extends StatefulWidget {
   const AdminReportPage({super.key});
@@ -15,6 +19,50 @@ class AdminReportPage extends StatefulWidget {
 }
 
 class _AdminReportPageState extends State<AdminReportPage> {
+  _ReportPeriod _selectedPeriod = _ReportPeriod.day;
+  bool _isPrinting = false;
+
+  DateTime _periodStart(_ReportPeriod period) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    switch (period) {
+      case _ReportPeriod.day:
+        return today;
+      case _ReportPeriod.week:
+        return today.subtract(const Duration(days: 6));
+      case _ReportPeriod.month:
+        return DateTime(now.year, now.month, 1);
+    }
+  }
+
+  String _periodLabel(_ReportPeriod period) {
+    final now = DateTime.now();
+    switch (period) {
+      case _ReportPeriod.day:
+        return 'Hari Ini (${formatTanggalSingkat(now)})';
+      case _ReportPeriod.week:
+        return '${formatTanggalSingkat(_periodStart(period))} - ${formatTanggalSingkat(now)}';
+      case _ReportPeriod.month:
+        return 'Bulan Ini (${formatBulanTahun(now)})';
+    }
+  }
+
+  Future<void> _printReport() async {
+    setState(() => _isPrinting = true);
+    try {
+      final provider = context.read<AdminProvider>();
+      final payments = provider.paidPaymentsSince(_periodStart(_selectedPeriod));
+      final bytes = await buildRevenueReportPdf(
+        periodLabel: _periodLabel(_selectedPeriod),
+        payments: payments,
+        orders: provider.allOrders,
+      );
+      await Printing.layoutPdf(onLayout: (format) async => bytes);
+    } finally {
+      if (mounted) setState(() => _isPrinting = false);
+    }
+  }
+
   Future<void> _load() async {
     final provider = context.read<AdminProvider>();
     await Future.wait([
@@ -81,6 +129,13 @@ class _AdminReportPageState extends State<AdminReportPage> {
     final orderCompletedCount = provider.allOrders
         .where((o) => o.status == 'completed')
         .length;
+    final periodPayments = provider.paidPaymentsSince(
+      _periodStart(_selectedPeriod),
+    );
+    final periodRevenue = periodPayments.fold<double>(
+      0,
+      (sum, p) => sum + p.amount,
+    );
 
     return RefreshIndicator(
       onRefresh: _load,
@@ -116,6 +171,86 @@ class _AdminReportPageState extends State<AdminReportPage> {
                 AppColors.warning,
               ),
             ],
+          ),
+          const SizedBox(height: 20),
+          const Text(
+            'Laporan Pendapatan',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 12),
+          Card(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      ChoiceChip(
+                        label: const Text('Hari Ini'),
+                        selected: _selectedPeriod == _ReportPeriod.day,
+                        onSelected: (_) =>
+                            setState(() => _selectedPeriod = _ReportPeriod.day),
+                      ),
+                      ChoiceChip(
+                        label: const Text('1 Minggu'),
+                        selected: _selectedPeriod == _ReportPeriod.week,
+                        onSelected: (_) => setState(
+                          () => _selectedPeriod = _ReportPeriod.week,
+                        ),
+                      ),
+                      ChoiceChip(
+                        label: const Text('1 Bulan'),
+                        selected: _selectedPeriod == _ReportPeriod.month,
+                        onSelected: (_) => setState(
+                          () => _selectedPeriod = _ReportPeriod.month,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    _periodLabel(_selectedPeriod),
+                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    formatRupiah(periodRevenue),
+                    style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                  Text(
+                    '${periodPayments.length} transaksi',
+                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: _isPrinting ? null : _printReport,
+                      icon: _isPrinting
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.print_outlined),
+                      label: Text(
+                        _isPrinting ? 'Menyiapkan PDF...' : 'Cetak PDF',
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
           const SizedBox(height: 20),
           const Text(

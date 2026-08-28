@@ -18,6 +18,10 @@ String formatTanggalSingkat(DateTime dt) {
   return '${dt.day} ${_bulanIndo[dt.month]} ${dt.year}';
 }
 
+String formatBulanTahun(DateTime dt) {
+  return '${_bulanIndo[dt.month]} ${dt.year}';
+}
+
 String formatTanggalIndo(DateTime dt) {
   return '${formatTanggalSingkat(dt)} · ${formatJamSaja(dt)} WIB';
 }

@@ -49,6 +49,15 @@ class AdminProvider extends ChangeNotifier {
         .fold<double>(0, (sum, p) => sum + p.amount);
   }
 
+  /// Pembayaran lunas sejak [start] (inklusif), terbaru lebih dulu.
+  /// Dipakai untuk laporan pendapatan dengan filter periode.
+  List<PaymentModel> paidPaymentsSince(DateTime start) {
+    final result =
+        _paidPayments.where((p) => !_paymentRevenueDate(p).isBefore(start)).toList()
+          ..sort((a, b) => _paymentRevenueDate(b).compareTo(_paymentRevenueDate(a)));
+    return result;
+  }
+
   double get todayRevenue {
     final now = DateTime.now();
     return _paidPayments
