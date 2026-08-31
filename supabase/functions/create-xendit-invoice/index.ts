@@ -54,15 +54,21 @@ serve(async (req: Request) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    const { data: orderData } = await supabase
+    const { data: orderData, error: orderError } = await supabase
       .from("orders")
       .select("customer_id")
       .eq("id", orderId)
       .single();
 
-    await supabase.from("payments").upsert({
+    if (orderError || !orderData?.customer_id) {
+      throw new Error(
+        `Gagal ambil customer_id order ${orderId}: ${orderError?.message ?? "order tidak ditemukan"}`
+      );
+    }
+
+    const { error: paymentError } = await supabase.from("payments").upsert({
       order_id: orderId,
-      customer_id: orderData?.customer_id,
+      customer_id: orderData.customer_id,
       method: "xendit",
       provider: "xendit",
       amount,
@@ -70,6 +76,10 @@ serve(async (req: Request) => {
       provider_reference: invoice.id,
       payment_url: invoice.invoice_url,
     }, { onConflict: "order_id" });
+
+    if (paymentError) {
+      throw new Error(`Gagal simpan payment untuk order ${orderId}: ${paymentError.message}`);
+    }
 
     return new Response(
       JSON.stringify({
